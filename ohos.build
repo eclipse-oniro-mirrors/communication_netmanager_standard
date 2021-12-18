@@ -1,0 +1,62 @@
+{
+  "subsystem": "communication",
+  "parts": {
+    "netmanager_standard": {
+      "variants": [
+         "phone",
+         "wearable",
+         "ivi"
+      ],
+      "module_list": [
+        "//foundation/communication/netmanager_standard/prebuilts/librarys/netd:libnet_manager_native",
+        "//foundation/communication/netmanager_standard/services/netconnmanager:net_conn_manager",
+        "//foundation/communication/netmanager_standard/services/dnsresolvermanager:dns_resolver_manager",
+        "//foundation/communication/netmanager_standard/services/netpolicymanager:net_policy_manager",
+        "//foundation/communication/netmanager_standard/services/ethernetmanager:ethernet_manager",
+        "//foundation/communication/netmanager_standard/interfaces/innerkits/native/netconnmanager:net_conn_manager_if",
+        "//foundation/communication/netmanager_standard/interfaces/innerkits/native/dnsresolvermanager:dns_resolver_manager_if",
+        "//foundation/communication/netmanager_standard/interfaces/innerkits/native/netpolicymanager:net_policy_manager_if",
+        "//foundation/communication/netmanager_standard/interfaces/innerkits/native/ethernetmanager:ethernet_manager_if",
+        "//foundation/communication/netmanager_standard/utils:net_manager_common",
+        "//foundation/communication/netmanager_standard/services/etc/init:netmanager_base.rc",
+        "//foundation/communication/netmanager_standard/services/etc/init:netd.rc",
+        "//foundation/communication/netmanager_standard/sa_profile:net_manager_profile",
+        "//foundation/communication/netmanager_standard/frameworks/js/netpolicy:netpolicy",
+        "//foundation/communication/netmanager_standard/frameworks/js/ethernet:ethernet",
+        "//foundation/communication/netmanager_standard/frameworks/js/dnsresolver:dnsresolver"
+      ],
+      "inner_kits": [
+        {
+          "type": "so",
+          "name": "//foundation/communication/netmanager_standard/interfaces/innerkits/native/netconnmanager:net_conn_manager_if",
+          "header": {
+            "header_files": [
+                "inet_addr.h",
+                "net_conn_client.h",
+                "net_link_info.h",
+                "net_supplier_info.h",
+                "net_conn_callback_info.h",
+                "net_specifier.h",
+                "route.h"
+            ],
+            "header_base": "//foundation/communication/netmanager_standard/interfaces/innerkits/native/netconnmanager/include"
+          }
+        },
+        {
+          "type": "so",
+          "name": "//foundation/communication/netmanager_standard/interfaces/innerkits/native/netpolicymanager:net_policy_manager_if",
+          "header": {
+            "header_files": [
+                "net_policy_client.h"
+            ],
+            "header_base": "//foundation/communication/netmanager_standard/interfaces/innerkits/native/netpolicymanager/include"
+          }
+        }
+      ],
+      "test_list": [
+          "//foundation/communication/netmanager_standard/services/netconnmanager/test:unittest",
+          "//foundation/communication/netmanager_standard/services/netpolicymanager/test:unittest"
+      ]
+    }
+  }
+}
