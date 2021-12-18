@@ -13,6 +13,7 @@
 import("//build/ohos.gni")
 import(
     "//foundation/communication/netmanager_standard/netmanager_base_config.gni")
+
 config("net_conn_manager_if_config") {
   # header file path
   include_dirs = [
