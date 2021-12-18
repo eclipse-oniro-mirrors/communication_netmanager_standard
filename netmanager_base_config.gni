@@ -15,14 +15,19 @@ SUBSYSTEM_DIR = "//foundation/communication"
 NETMANAGER_BASE_ROOT = "$SUBSYSTEM_DIR/netmanager_standard"
 NETMANAGERNATIVE_ROOT = "$NETMANAGER_BASE_ROOT/services/netmanagernative"
 INNERKITS_ROOT = "$NETMANAGER_BASE_ROOT/interfaces/innerkits"
-NETCONNMANAGER_INNERKITS_SOURCE_DIR = "$NETMANAGER_BASE_ROOT//frameworks/innerkitsimpl/netconnmanager"
-NETPOLICYMANAGER_INNERKITS_SOURCE_DIR = "$NETMANAGER_BASE_ROOT//frameworks/innerkitsimpl/netpolicymanager"
-DNSRESOLVERMANAGER_INNERKITS_SOURCE_DIR = "$NETMANAGER_BASE_ROOT//frameworks/innerkitsimpl/dnsresolvermanager"
-ETHERNETMANAGER_INNERKITS_SOURCE_DIR = "$NETMANAGER_BASE_ROOT//frameworks/innerkitsimpl/ethernetmanager"
+NETCONNMANAGER_INNERKITS_SOURCE_DIR =
+    "$NETMANAGER_BASE_ROOT//frameworks/innerkitsimpl/netconnmanager"
+NETPOLICYMANAGER_INNERKITS_SOURCE_DIR =
+    "$NETMANAGER_BASE_ROOT//frameworks/innerkitsimpl/netpolicymanager"
+DNSRESOLVERMANAGER_INNERKITS_SOURCE_DIR =
+    "$NETMANAGER_BASE_ROOT//frameworks/innerkitsimpl/dnsresolvermanager"
+ETHERNETMANAGER_INNERKITS_SOURCE_DIR =
+    "$NETMANAGER_BASE_ROOT//frameworks/innerkitsimpl/ethernetmanager"
 NETCONNMANAGER_SOURCE_DIR = "$NETMANAGER_BASE_ROOT/services/netconnmanager"
 NETPOLICYMANAGER_SOURCE_DIR = "$NETMANAGER_BASE_ROOT/services/netpolicymanager"
 NETCONNMANAGER_COMMON_DIR = "$NETMANAGER_BASE_ROOT/services/common"
-DNSRESOLVERMANAGER_SOURCE_DIR = "$NETMANAGER_BASE_ROOT/services/dnsresolvermanager"
+DNSRESOLVERMANAGER_SOURCE_DIR =
+    "$NETMANAGER_BASE_ROOT/services/dnsresolvermanager"
 ETHERNETMANAGER_SOURCE_DIR = "$NETMANAGER_BASE_ROOT/services/ethernetmanager"
 NETMANAGER_PREBUILTS_DIR = "$NETMANAGER_BASE_ROOT/prebuilts"
 
