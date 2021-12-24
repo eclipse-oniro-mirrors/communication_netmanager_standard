@@ -69,16 +69,16 @@ void NapiDnsResolver::CompleteDnsResolverCallback(napi_env env, napi_status stat
         }
     } else {
         // call back return
-        napi_value callbackValues[CALLBACK_ARGV_CNT] = {nullptr, nullptr};
+        napi_value callbackValues[static_cast<int32_t>(JS_CALLBACK_ARGV::CALLBACK_ARGV_CNT)] = {nullptr, nullptr};
         napi_value recv = nullptr;
         napi_value result = nullptr;
         napi_value callbackFunc = nullptr;
         napi_get_undefined(env, &recv);
         napi_get_reference_value(env, context->callbackRef, &callbackFunc);
         if (context->hostAddress.size() > 0) {
-            callbackValues[CALLBACK_ARGV_INDEX_1] = infoAttay;
+            callbackValues[static_cast<int32_t>(JS_CALLBACK_ARGV::CALLBACK_ARGV_INDEX_1)] = infoAttay;
         } else {
-            callbackValues[CALLBACK_ARGV_INDEX_0] = info;
+            callbackValues[static_cast<int32_t>(JS_CALLBACK_ARGV::CALLBACK_ARGV_INDEX_0)] = info;
         }
         napi_call_function(env, recv, callbackFunc, std::size(callbackValues), callbackValues, &result);
         napi_delete_reference(env, context->callbackRef);
@@ -91,23 +91,24 @@ void NapiDnsResolver::CompleteDnsResolverCallback(napi_env env, napi_status stat
 napi_value NapiDnsResolver::GetAddressesByName(napi_env env, napi_callback_info info)
 {
     NETMGR_LOGI("NapiDnsResolver GetAddressesByName");
-    size_t argc = ARGV_NUM_2;
+    size_t argc = static_cast<size_t>(JS_ARGV_NUM::ARGV_NUM_2);
     napi_value argv[] = {nullptr, nullptr} ;
     NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
     DnsResolverAsyncContext* context = std::make_unique<DnsResolverAsyncContext>().release();
-    NAPI_CALL(env, napi_get_value_string_utf8(
-        env, argv[ARGV_INDEX_0], context->host, HOST_MAX_BYTES, &(context->hostRealBytes)));
+    NAPI_CALL(env, napi_get_value_string_utf8(env, argv[static_cast<int32_t>(JS_ARGV_INDEX::ARGV_INDEX_0)],
+        context->host, HOST_MAX_BYTES, &(context->hostRealBytes)));
     NETMGR_LOGI("GetAddressesByName = [%{public}s]", context->host);
     NETMGR_LOGI("GetAddressesByName argc = [%{public}d]", static_cast<int>(argc));
     napi_value result = nullptr;
-    if (argc == ARGV_NUM_1) {
+    if (argc == static_cast<int32_t>(JS_ARGV_NUM::ARGV_NUM_1)) {
         if (context->callbackRef == nullptr) {
             NAPI_CALL(env, napi_create_promise(env, &context->deferred, &result));
         } else {
             NAPI_CALL(env, napi_get_undefined(env, &result));
         }
-    } else if (argc == ARGV_NUM_2) {
-        NAPI_CALL(env, napi_create_reference(env, argv[ARGV_INDEX_1], CALLBACK_REF_CNT, &context->callbackRef));
+    } else if (argc == static_cast<int32_t>(JS_ARGV_NUM::ARGV_NUM_2)) {
+        NAPI_CALL(env, napi_create_reference(env, argv[static_cast<int32_t>(JS_ARGV_INDEX::ARGV_INDEX_1)],
+            CALLBACK_REF_CNT, &context->callbackRef));
     } else {
         NETMGR_LOGE("GetAddressesByName  exception");
     }

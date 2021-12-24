@@ -21,6 +21,7 @@
 #include <sstream>
 #include <vector>
 #include <memory>
+#include <mutex>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/sendfile.h>
@@ -58,6 +59,7 @@ private:
 
 private:
     NetPolicy netPolicy_;
+    std::mutex mutex_;
 };
 } // namespace NetManagerStandard
 } // namespace OHOS
