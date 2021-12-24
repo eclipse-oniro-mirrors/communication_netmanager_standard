@@ -98,12 +98,14 @@ NetPolicyResultCode NetPolicyService::SetUidPolicy(uint32_t uid, NetUidPolicy po
 
 NetUidPolicy NetPolicyService::GetUidPolicy(uint32_t uid)
 {
+    std::unique_lock<std::mutex> lock(mutex_);
     NETMGR_LOGI("GetUidPolicy info: uid[%{public}d]", uid);
     return netPolicyFile_->GetUidPolicy(uid);
 }
 
 std::vector<uint32_t> NetPolicyService::GetUids(NetUidPolicy policy)
 {
+    std::unique_lock<std::mutex> lock(mutex_);
     NETMGR_LOGI("GetUids info: policy[%{public}d]", static_cast<uint32_t>(policy));
     std::vector<uint32_t> uids;
     if (!netPolicyFile_->GetUids(policy, uids)) {
@@ -114,6 +116,7 @@ std::vector<uint32_t> NetPolicyService::GetUids(NetUidPolicy policy)
 
 bool NetPolicyService::IsUidNetAccess(uint32_t uid, bool metered)
 {
+    std::unique_lock<std::mutex> lock(mutex_);
     NETMGR_LOGI("IsUidNetAccess info: uid[%{public}d]", uid);
     NetUidPolicy uidPolicy = netPolicyFile_->GetUidPolicy(uid);
     if (uidPolicy == NetUidPolicy::NET_POLICY_NONE) {
@@ -130,6 +133,7 @@ bool NetPolicyService::IsUidNetAccess(uint32_t uid, bool metered)
 
 bool NetPolicyService::IsUidNetAccess(uint32_t uid, const std::string &ifaceName)
 {
+    std::unique_lock<std::mutex> lock(mutex_);
     NETMGR_LOGI("IsUidNetAccess info: uid[%{public}d] ifaceName[%{public}s]", uid, ifaceName.c_str());
     NetUidPolicy uidPolicy = netPolicyFile_->GetUidPolicy(uid);
     if (uidPolicy == NetUidPolicy::NET_POLICY_NONE) {

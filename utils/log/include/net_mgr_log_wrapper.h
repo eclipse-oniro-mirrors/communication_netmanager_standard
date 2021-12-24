@@ -62,8 +62,6 @@ static constexpr OHOS::HiviewDFX::HiLogLabel NET_MGR_LABEL = {LOG_CORE, LOG_DOMA
 #else
 #define PRINT_LOG(op, fmt, ...)
 #endif
-
-#define NETMGR_LOGD(fmt, ...) PRINT_LOG(Debug, fmt, ##__VA_ARGS__)
 #define NETMGR_LOGE(fmt, ...) PRINT_LOG(Error, fmt, ##__VA_ARGS__)
 #define NETMGR_LOGW(fmt, ...) PRINT_LOG(Warn, fmt, ##__VA_ARGS__)
 #define NETMGR_LOGI(fmt, ...) PRINT_LOG(Info, fmt, ##__VA_ARGS__)

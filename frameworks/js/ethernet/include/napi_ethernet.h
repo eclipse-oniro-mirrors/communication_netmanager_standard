@@ -16,10 +16,11 @@
 #ifndef NAPI_ETHERNET_H
 #define NAPI_ETHERNET_H
 
-#include "napi/native_api.h"
-#include "napi/native_node_api.h"
 #include <string>
 #include <vector>
+
+#include "napi/native_api.h"
+#include "napi/native_node_api.h"
 
 namespace OHOS {
 namespace NetManagerStandard {

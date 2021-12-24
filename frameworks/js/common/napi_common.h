@@ -30,13 +30,13 @@ constexpr uint32_t PROPERTY_MAX_BYTE = 128;
 // define constant of 64 bytes
 constexpr uint32_t BUFFER_BYTE = 64;
 
-enum JS_CALLBACK_ARGV {
+enum class JS_CALLBACK_ARGV : int32_t {
     CALLBACK_ARGV_INDEX_0 = 0,
     CALLBACK_ARGV_INDEX_1,
     CALLBACK_ARGV_CNT,
 };
 
-enum JS_ARGV_NUM {
+enum class JS_ARGV_NUM : int32_t {
     ARGV_NUM_0 = 0,
     ARGV_NUM_1,
     ARGV_NUM_2,
@@ -45,7 +45,7 @@ enum JS_ARGV_NUM {
     ARGV_NUM_5,
 };
 
-enum JS_ARGV_INDEX {
+enum class JS_ARGV_INDEX : int32_t {
     ARGV_INDEX_0 = 0,
     ARGV_INDEX_1,
     ARGV_INDEX_2,
@@ -53,7 +53,7 @@ enum JS_ARGV_INDEX {
     ARGV_INDEX_4,
 };
 
-class NpiCommon {
+class NapiCommon {
 public:
     static napi_value CreateCodeMessage(napi_env env, const std::string &msg, int32_t code);
     static napi_value NapiValueByInt32(napi_env env, int32_t property);
