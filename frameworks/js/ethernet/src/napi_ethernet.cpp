@@ -301,7 +301,8 @@ napi_value NapiEthernet::SetIfaceConfig(napi_env env, napi_callback_info info)
     } else {
         NETMGR_LOGE("SetIfaceConfig  exception");
     }
-    napi_value resource = nullptr, resourceName = nullptr;
+    napi_value resource = nullptr;
+    napi_value resourceName = nullptr;
     NAPI_CALL(env, napi_get_undefined(env, &resource));
     NAPI_CALL(env, napi_create_string_utf8(env, "SetIfaceConfig", NAPI_AUTO_LENGTH, &resourceName));
     NAPI_CALL(env, napi_create_async_work(env, resource, resourceName,
