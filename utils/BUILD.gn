@@ -40,20 +40,11 @@ ohos_shared_library("net_manager_common") {
 
   public_deps = [ "//utils/native/base:utils" ]
 
-  if (is_double_framework) {
-    cflags_cc = [ "-DCONFIG_DUAL_FRAMEWORK" ]
-  }
-
   if (is_standard_system) {
     external_deps = [ "hiviewdfx_hilog_native:libhilog" ]
   } else {
     external_deps = [ "hilog:libhilog" ]
   }
-
-  external_deps += [
-    "appexecfwk_standard:libeventhandler",
-    "native_appdatamgr:native_preferences",
-  ]
 
   part_name = "netmanager_standard"
   subsystem_name = "communication"

@@ -17,7 +17,7 @@
 
 namespace OHOS {
 namespace NetManagerStandard {
-napi_value NpiCommon::CreateCodeMessage(napi_env env, const std::string &msg, int32_t code)
+napi_value NapiCommon::CreateCodeMessage(napi_env env, const std::string &msg, int32_t code)
 {
     napi_value messageCodeInfo = nullptr;
     napi_value messageInfo = nullptr;
@@ -29,14 +29,14 @@ napi_value NpiCommon::CreateCodeMessage(napi_env env, const std::string &msg, in
     return messageCodeInfo;
 }
 
-void NpiCommon::SetPropertyInt32(napi_env env, napi_value object, const std::string &propertyName, int32_t property)
+void NapiCommon::SetPropertyInt32(napi_env env, napi_value object, const std::string &propertyName, int32_t property)
 {
     napi_value propertyDest = nullptr;
     NAPI_CALL_RETURN_VOID(env, napi_create_int32(env, property, &propertyDest));
     NAPI_CALL_RETURN_VOID(env, napi_set_named_property(env, object, propertyName.c_str(), propertyDest));
 }
 
-void NpiCommon::SetPropertyString(
+void NapiCommon::SetPropertyString(
     napi_env env, napi_value object, const std::string &propertyName, const std::string &property)
 {
     napi_value propertyDest = nullptr;
@@ -44,25 +44,25 @@ void NpiCommon::SetPropertyString(
     NAPI_CALL_RETURN_VOID(env, napi_set_named_property(env, object, propertyName.c_str(), propertyDest));
 }
 
-void NpiCommon::GetPropertyString(
+void NapiCommon::GetPropertyString(
     napi_env env, napi_value object, const std::string &propertyName, std::string &property)
 {
     napi_value value = nullptr;
     char propertyBuffer[PROPERTY_MAX_BYTE] = {0};
-    size_t realByte= 0;
+    size_t realByte = 0;
     NAPI_CALL_RETURN_VOID(env, napi_get_named_property(env, object, propertyName.c_str(), &value));
     NAPI_CALL_RETURN_VOID(env, napi_get_value_string_utf8(env, value, propertyBuffer, PROPERTY_MAX_BYTE, &realByte));
     property = propertyBuffer;
 }
 
-void NpiCommon::GetPropertyInt32(napi_env env, napi_value object, const std::string &propertyName, int32_t &property)
+void NapiCommon::GetPropertyInt32(napi_env env, napi_value object, const std::string &propertyName, int32_t &property)
 {
     napi_value value = nullptr;
     NAPI_CALL_RETURN_VOID(env, napi_get_named_property(env, object, propertyName.c_str(), &value));
     NAPI_CALL_RETURN_VOID(env, napi_get_value_int32(env, value, &property));
 }
 
-napi_value NpiCommon::NapiValueByInt32(napi_env env, int32_t property)
+napi_value NapiCommon::NapiValueByInt32(napi_env env, int32_t property)
 {
     napi_value value = nullptr;
     NAPI_CALL(env, napi_create_int32(env, property, &value));

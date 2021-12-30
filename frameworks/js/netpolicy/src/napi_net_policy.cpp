@@ -98,16 +98,16 @@ void NapiNetPolicy::CompleteSetUidPolicy(napi_env env, napi_status status, void 
         }
     } else {
         // call back
-        napi_value callbackValues[CALLBACK_ARGV_CNT] = {nullptr, nullptr};
+        napi_value callbackValues[static_cast<int32_t>(JS_CALLBACK_ARGV::CALLBACK_ARGV_CNT)] = {nullptr, nullptr};
         napi_value recv = nullptr;
         napi_value result = nullptr;
         napi_value callbackFunc = nullptr;
         napi_get_undefined(env, &recv);
         napi_get_reference_value(env, context->callbackRef, &callbackFunc);
         if (context->policyResult != static_cast<int32_t>(NetPolicyResultCode::ERR_NONE)) {
-            callbackValues[CALLBACK_ARGV_INDEX_0] = info;
+            callbackValues[static_cast<int32_t>(JS_CALLBACK_ARGV::CALLBACK_ARGV_INDEX_0)] = info;
         } else {
-            callbackValues[CALLBACK_ARGV_INDEX_1] = info;
+            callbackValues[static_cast<int32_t>(JS_CALLBACK_ARGV::CALLBACK_ARGV_INDEX_1)] = info;
         }
         napi_call_function(env, recv, callbackFunc, std::size(callbackValues), callbackValues, &result);
         napi_delete_reference(env, context->callbackRef);
@@ -135,13 +135,13 @@ void NapiNetPolicy::CompleteGetUids(napi_env env, napi_status status, void *data
     if (!context->callbackRef) {
         NAPI_CALL_RETURN_VOID(env, napi_resolve_deferred(env, context->deferred, info));
     } else {
-        napi_value callbackValues[CALLBACK_ARGV_CNT] = {nullptr, nullptr};
+        napi_value callbackValues[static_cast<int32_t>(JS_CALLBACK_ARGV::CALLBACK_ARGV_CNT)] = {nullptr, nullptr};
         napi_value recv = nullptr;
         napi_value result = nullptr;
         napi_value callbackFunc = nullptr;
         napi_get_undefined(env, &recv);
         napi_get_reference_value(env, context->callbackRef, &callbackFunc);
-        callbackValues[CALLBACK_ARGV_INDEX_1] = info;
+        callbackValues[static_cast<int32_t>(JS_CALLBACK_ARGV::CALLBACK_ARGV_INDEX_1)] = info;
         napi_call_function(env, recv, callbackFunc, std::size(callbackValues), callbackValues, &result);
         napi_delete_reference(env, context->callbackRef);
     }
@@ -162,13 +162,13 @@ void NapiNetPolicy::CompleteGetUidPolicy(napi_env env, napi_status status, void 
     if (!context->callbackRef) {
         NAPI_CALL_RETURN_VOID(env, napi_resolve_deferred(env, context->deferred, info));
     } else {
-        napi_value callbackValues[CALLBACK_ARGV_CNT] = {nullptr, nullptr};
+        napi_value callbackValues[static_cast<int32_t>(JS_CALLBACK_ARGV::CALLBACK_ARGV_CNT)] = {nullptr, nullptr};
         napi_value recv = nullptr;
         napi_value result = nullptr;
         napi_value callbackFunc = nullptr;
         napi_get_undefined(env, &recv);
         napi_get_reference_value(env, context->callbackRef, &callbackFunc);
-        callbackValues[CALLBACK_ARGV_INDEX_1] = info;
+        callbackValues[static_cast<int32_t>(JS_CALLBACK_ARGV::CALLBACK_ARGV_INDEX_1)] = info;
         napi_call_function(env, recv, callbackFunc, std::size(callbackValues), callbackValues, &result);
         napi_delete_reference(env, context->callbackRef);
     }
@@ -193,16 +193,16 @@ void NapiNetPolicy::CompleteIsUidNetAccess(napi_env env, napi_status status, voi
             NAPI_CALL_RETURN_VOID(env, napi_resolve_deferred(env, context->deferred, info));
         }
     } else {
-        napi_value callbackValues[CALLBACK_ARGV_CNT] = {nullptr, nullptr};
+        napi_value callbackValues[static_cast<int32_t>(JS_CALLBACK_ARGV::CALLBACK_ARGV_CNT)] = {nullptr, nullptr};
         napi_value recv = nullptr;
         napi_value result = nullptr;
         napi_value callbackFunc = nullptr;
         napi_get_undefined(env, &recv);
         napi_get_reference_value(env, context->callbackRef, &callbackFunc);
         if (context->result == 0) {
-            callbackValues[CALLBACK_ARGV_INDEX_0] = info;
+            callbackValues[static_cast<int32_t>(JS_CALLBACK_ARGV::CALLBACK_ARGV_INDEX_0)] = info;
         } else {
-            callbackValues[CALLBACK_ARGV_INDEX_1] = info;
+            callbackValues[static_cast<int32_t>(JS_CALLBACK_ARGV::CALLBACK_ARGV_INDEX_1)] = info;
         }
         napi_call_function(env, recv, callbackFunc, std::size(callbackValues), callbackValues, &result);
         napi_delete_reference(env, context->callbackRef);
@@ -216,17 +216,17 @@ napi_value NapiNetPolicy::DeclareNapiNetPolicyData(napi_env env, napi_value expo
 {
     napi_property_descriptor desc[] = {
         DECLARE_NAPI_STATIC_PROPERTY("NET_POLICY_NONE",
-            NpiCommon::NapiValueByInt32(env, static_cast<int32_t>(NetUidPolicy::NET_POLICY_NONE))),
+            NapiCommon::NapiValueByInt32(env, static_cast<int32_t>(NetUidPolicy::NET_POLICY_NONE))),
         DECLARE_NAPI_STATIC_PROPERTY("NET_POLICY_ALLOW_METERED_BACKGROUND",
-            NpiCommon::NapiValueByInt32(env, static_cast<int32_t>(NetUidPolicy::NET_POLICY_ALLOW_METERED_BACKGROUND))),
+            NapiCommon::NapiValueByInt32(env, static_cast<int32_t>(NetUidPolicy::NET_POLICY_ALLOW_METERED_BACKGROUND))),
         DECLARE_NAPI_STATIC_PROPERTY("NET_POLICY_TEMPORARY_ALLOW_METERED",
-            NpiCommon::NapiValueByInt32(env, static_cast<int32_t>(NetUidPolicy::NET_POLICY_TEMPORARY_ALLOW_METERED))),
-        DECLARE_NAPI_STATIC_PROPERTY("NET_POLICY_REJECT_METERED_BACKGROUND",
-            NpiCommon::NapiValueByInt32(env, static_cast<int32_t>(NetUidPolicy::NET_POLICY_REJECT_METERED_BACKGROUND))),
+            NapiCommon::NapiValueByInt32(env, static_cast<int32_t>(NetUidPolicy::NET_POLICY_TEMPORARY_ALLOW_METERED))),
+        DECLARE_NAPI_STATIC_PROPERTY("NET_POLICY_REJECT_METERED_BACKGROUND", NapiCommon::NapiValueByInt32(env,
+            static_cast<int32_t>(NetUidPolicy::NET_POLICY_REJECT_METERED_BACKGROUND))),
         DECLARE_NAPI_STATIC_PROPERTY("NET_POLICY_ALLOW_ALL",
-            NpiCommon::NapiValueByInt32(env, static_cast<int32_t>(NetUidPolicy::NET_POLICY_ALLOW_ALL))),
+            NapiCommon::NapiValueByInt32(env, static_cast<int32_t>(NetUidPolicy::NET_POLICY_ALLOW_ALL))),
         DECLARE_NAPI_STATIC_PROPERTY("NET_POLICY_REJECT_ALL",
-            NpiCommon::NapiValueByInt32(env, static_cast<int32_t>(NetUidPolicy::NET_POLICY_REJECT_ALL))),
+            NapiCommon::NapiValueByInt32(env, static_cast<int32_t>(NetUidPolicy::NET_POLICY_REJECT_ALL))),
     };
     NAPI_CALL(env, napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc));
     return exports;
@@ -236,13 +236,13 @@ napi_value NapiNetPolicy::DeclareNapiNetPolicyResultData(napi_env env, napi_valu
 {
     napi_property_descriptor desc[] = {
         DECLARE_NAPI_STATIC_PROPERTY("ERR_NONE",
-            NpiCommon::NapiValueByInt32(env, static_cast<int32_t>(NetPolicyResultCode::ERR_NONE))),
+            NapiCommon::NapiValueByInt32(env, static_cast<int32_t>(NetPolicyResultCode::ERR_NONE))),
         DECLARE_NAPI_STATIC_PROPERTY("ERR_INTERNAL_ERROR",
-            NpiCommon::NapiValueByInt32(env, static_cast<int32_t>(NetPolicyResultCode::ERR_INTERNAL_ERROR))),
+            NapiCommon::NapiValueByInt32(env, static_cast<int32_t>(NetPolicyResultCode::ERR_INTERNAL_ERROR))),
         DECLARE_NAPI_STATIC_PROPERTY("ERR_INVALID_UID",
-            NpiCommon::NapiValueByInt32(env, static_cast<int32_t>(NetPolicyResultCode::ERR_INVALID_UID))),
+            NapiCommon::NapiValueByInt32(env, static_cast<int32_t>(NetPolicyResultCode::ERR_INVALID_UID))),
         DECLARE_NAPI_STATIC_PROPERTY("ERR_INVALID_POLICY",
-            NpiCommon::NapiValueByInt32(env, static_cast<int32_t>(NetPolicyResultCode::ERR_INVALID_POLICY))),
+            NapiCommon::NapiValueByInt32(env, static_cast<int32_t>(NetPolicyResultCode::ERR_INVALID_POLICY))),
     };
     NAPI_CALL(env, napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc));
     return exports;
@@ -262,23 +262,26 @@ napi_value NapiNetPolicy::DeclareNapiNetPolicyInterface(napi_env env, napi_value
 
 napi_value NapiNetPolicy::SetUidPolicy(napi_env env, napi_callback_info info)
 {
-    size_t argc = ARGV_NUM_3;
+    size_t argc = static_cast<size_t>(JS_ARGV_NUM::ARGV_NUM_3);
     napi_value argv[] = {nullptr, nullptr, nullptr};
     NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
     NetPolicyAsyncContext* context = std::make_unique<NetPolicyAsyncContext>().release();
-    NAPI_CALL(env, napi_get_value_uint32(env, argv[ARGV_INDEX_0], &context->uid));
-    NAPI_CALL(env, napi_get_value_uint32(env, argv[ARGV_INDEX_1], &context->policy));
-    NETMGR_LOGI("JS agvc count = [%{public}d], argv[ARGV_INDEX_0] = [%{public}d], argv[ARGV_INDEX_1] = [%{public}d]",
+    NAPI_CALL(env, napi_get_value_uint32(env, argv[static_cast<int32_t>(JS_ARGV_INDEX::ARGV_INDEX_0)], &context->uid));
+    NAPI_CALL(env, napi_get_value_uint32(env, argv[static_cast<int32_t>(JS_ARGV_INDEX::ARGV_INDEX_1)],
+        &context->policy));
+    NETMGR_LOGI("JS agvc count = [%{public}d], argv[static_cast<int32_t>(JS_ARGV_INDEX::ARGV_INDEX_0)] = [%{public}d], "
+        "argv[ARGV_INDEX_1] = [%{public}d]",
         static_cast<int>(argc), context->uid, context->policy);
     napi_value result = nullptr;
-    if (argc == ARGV_INDEX_2) {
+    if (argc == static_cast<int32_t>(JS_ARGV_INDEX::ARGV_INDEX_2)) {
         if (context->callbackRef == nullptr) {
             NAPI_CALL(env, napi_create_promise(env, &context->deferred, &result));
         } else {
             NAPI_CALL(env, napi_get_undefined(env, &result));
         }
-    } else if (argc == ARGV_INDEX_3) {
-        NAPI_CALL(env, napi_create_reference(env, argv[ARGV_INDEX_2], CALLBACK_REF_CNT, &context->callbackRef));
+    } else if (argc == static_cast<int32_t>(JS_ARGV_INDEX::ARGV_INDEX_3)) {
+        NAPI_CALL(env, napi_create_reference(env, argv[static_cast<int32_t>(JS_ARGV_INDEX::ARGV_INDEX_2)],
+            CALLBACK_REF_CNT, &context->callbackRef));
     } else {
         NETMGR_LOGE("SetUidPolicy exception");
     }
@@ -298,23 +301,24 @@ napi_value NapiNetPolicy::SetUidPolicy(napi_env env, napi_callback_info info)
 
 napi_value NapiNetPolicy::GetUidPolicy(napi_env env, napi_callback_info info)
 {
-    size_t argc = ARGV_INDEX_2;
+    size_t argc = static_cast<size_t>(JS_ARGV_INDEX::ARGV_INDEX_2);
     napi_value argv[] = {nullptr, nullptr};
     NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
     NetPolicyAsyncContext* context = std::make_unique<NetPolicyAsyncContext>().release();
-    NAPI_CALL(env, napi_get_value_uint32(env, argv[ARGV_INDEX_0], &context->uid));
+    NAPI_CALL(env, napi_get_value_uint32(env, argv[static_cast<int32_t>(JS_ARGV_INDEX::ARGV_INDEX_0)], &context->uid));
     NETMGR_LOGE("JS agvc count = [%{public}d], argv[0] = [%{public}d]",
         static_cast<int>(argc), context->uid);
     // Get and verify parameter[js]
     napi_value result = nullptr;
-    if (argc == ARGV_INDEX_1) {
+    if (argc == static_cast<int32_t>(JS_ARGV_INDEX::ARGV_INDEX_1)) {
         if (!context->callbackRef) {
             NAPI_CALL(env, napi_create_promise(env, &context->deferred, &result));
         } else {
             NAPI_CALL(env, napi_get_undefined(env, &result));
         }
-    } else if (argc == ARGV_INDEX_2) {
-        NAPI_CALL(env, napi_create_reference(env, argv[ARGV_INDEX_1], CALLBACK_REF_CNT, &context->callbackRef));
+    } else if (argc == static_cast<int32_t>(JS_ARGV_INDEX::ARGV_INDEX_2)) {
+        NAPI_CALL(env, napi_create_reference(env, argv[static_cast<int32_t>(JS_ARGV_INDEX::ARGV_INDEX_1)],
+            CALLBACK_REF_CNT, &context->callbackRef));
     } else {
         NETMGR_LOGE("GetUidPolicy exception");
     }
@@ -334,23 +338,25 @@ napi_value NapiNetPolicy::GetUidPolicy(napi_env env, napi_callback_info info)
 
 napi_value NapiNetPolicy::GetUids(napi_env env, napi_callback_info info)
 {
-    size_t argc = ARGV_INDEX_2;
+    size_t argc = static_cast<size_t>(JS_ARGV_INDEX::ARGV_INDEX_2);
     napi_value argv[] = {nullptr, nullptr} ;
     NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
     NetPolicyAsyncContext* context = std::make_unique<NetPolicyAsyncContext>().release();
-    NAPI_CALL(env, napi_get_value_uint32(env, argv[ARGV_INDEX_0], &context->policy));
+    NAPI_CALL(env, napi_get_value_uint32(env, argv[static_cast<int32_t>(JS_ARGV_INDEX::ARGV_INDEX_0)],
+        &context->policy));
     NETMGR_LOGE("JS agvc count = [%{public}d], argv[0] = [%{public}d]",
         static_cast<int>(argc), context->policy);
     // Get and verify parameter[js]
     napi_value result = nullptr;
-    if (argc == ARGV_INDEX_1) {
+    if (argc == static_cast<int32_t>(JS_ARGV_INDEX::ARGV_INDEX_1)) {
         if (!context->callbackRef) {
             NAPI_CALL(env, napi_create_promise(env, &context->deferred, &result));
         } else {
             NAPI_CALL(env, napi_get_undefined(env, &result));
         }
-    } else if (argc == ARGV_INDEX_2) {
-        NAPI_CALL(env, napi_create_reference(env, argv[ARGV_INDEX_1], CALLBACK_REF_CNT, &context->callbackRef));
+    } else if (argc == static_cast<int32_t>(JS_ARGV_INDEX::ARGV_INDEX_2)) {
+        NAPI_CALL(env, napi_create_reference(env, argv[static_cast<int32_t>(JS_ARGV_INDEX::ARGV_INDEX_1)],
+            CALLBACK_REF_CNT, &context->callbackRef));
     } else {
         NETMGR_LOGE("GetUids exception");
     }
@@ -371,33 +377,36 @@ napi_value NapiNetPolicy::GetUids(napi_env env, napi_callback_info info)
 napi_value NapiNetPolicy::IsUidNetAccess(napi_env env, napi_callback_info info)
 {
     napi_valuetype valueType = napi_undefined;
-    size_t argc = ARGV_NUM_3;
+    size_t argc = static_cast<size_t>(JS_ARGV_NUM::ARGV_NUM_3);
     napi_value argv[] = {nullptr, nullptr, nullptr};
     NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
     NetPolicyAsyncContext* context = std::make_unique<NetPolicyAsyncContext>().release();
-    NAPI_CALL(env, napi_get_value_uint32(env, argv[ARGV_NUM_0], &context->uid));
-    napi_typeof(env, argv[ARGV_NUM_1], &valueType);
+    NAPI_CALL(env, napi_get_value_uint32(env, argv[static_cast<int32_t>(JS_ARGV_NUM::ARGV_NUM_0)], &context->uid));
+    napi_typeof(env, argv[static_cast<int32_t>(JS_ARGV_NUM::ARGV_NUM_1)], &valueType);
     if (napi_valuetype::napi_boolean == valueType) {
-        NAPI_CALL(env, napi_get_value_bool(env, argv[ARGV_NUM_1], &context->metered));
+        NAPI_CALL(env, napi_get_value_bool(env, argv[static_cast<int32_t>(JS_ARGV_NUM::ARGV_NUM_1)],
+            &context->metered));
     }
     if (napi_valuetype::napi_string == valueType) {
         char buf[BUFFER_BYTE] = {0};
         size_t typeLen = 0;
-        napi_get_value_string_utf8(env, argv[ARGV_NUM_1], buf, sizeof(buf), &typeLen);
+        napi_get_value_string_utf8(env, argv[static_cast<int32_t>(JS_ARGV_NUM::ARGV_NUM_1)], buf, sizeof(buf),
+            &typeLen);
         context->interfaceName = buf;
         NETMGR_LOGE("interfaceName = [%{public}s].\n", context->interfaceName.c_str());
     }
     NETMGR_LOGI("JS agvc count = [%{public}d], argv[0] = [%{public}d], argv[1] = [%{public}d]",
         static_cast<int>(argc), context->uid, context->metered);
     napi_value result = nullptr;
-    if (argc == ARGV_NUM_2) {
+    if (argc == static_cast<int32_t>(JS_ARGV_NUM::ARGV_NUM_2)) {
         if (!context->callbackRef) {
             NAPI_CALL(env, napi_create_promise(env, &context->deferred, &result));
         } else {
             NAPI_CALL(env, napi_get_undefined(env, &result));
         }
-    } else if (argc == ARGV_NUM_3) {
-        NAPI_CALL(env, napi_create_reference(env, argv[ARGV_NUM_2], CALLBACK_REF_CNT, &context->callbackRef));
+    } else if (argc == static_cast<int32_t>(JS_ARGV_NUM::ARGV_NUM_3)) {
+        NAPI_CALL(env, napi_create_reference(env, argv[static_cast<int32_t>(JS_ARGV_NUM::ARGV_NUM_2)], CALLBACK_REF_CNT,
+            &context->callbackRef));
     } else {
         NETMGR_LOGE("IsUidNetAccess exception");
     }

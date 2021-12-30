@@ -77,6 +77,7 @@ bool NetPolicyFile::Json2Obj(const std::string &content, NetPolicy &netPolicy)
 
 bool NetPolicyFile::ReadFile(const std::string &fileName, std::string &fileContent)
 {
+    std::unique_lock<std::mutex> lock(mutex_);
     if (fileName.empty()) {
         NETMGR_LOGE("fileName empty.");
         return false;
@@ -103,6 +104,7 @@ bool NetPolicyFile::ReadFile(const std::string &fileName, std::string &fileConte
 
 bool NetPolicyFile::WriteFile(const std::string &fileName)
 {
+    std::unique_lock<std::mutex> lock(mutex_);
     if (fileName.empty()) {
         NETMGR_LOGE("fileName is empty.");
         return false;
