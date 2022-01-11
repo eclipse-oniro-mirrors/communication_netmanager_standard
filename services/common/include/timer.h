@@ -48,7 +48,7 @@ public:
         if (stopStatus_ == false) {
             return;
         }
-        NETMGR_LOGI("start thread...");
+        NETMGR_LOG_D("start thread...");
         stopStatus_ = false;
         std::thread([this, interval, taskFun]() {
             while (!tryStopFlag_) {
@@ -56,9 +56,11 @@ public:
                 taskFun();
             }
 
-            std::lock_guard<std::mutex> locker(mutex_);
-            stopStatus_ = true;
-            timerCond_.notify_one();
+            {
+                std::lock_guard<std::mutex> locker(mutex_);
+                stopStatus_ = true;
+                timerCond_.notify_one();
+            }
         }).detach();
     }
 
@@ -77,7 +79,7 @@ public:
         if (stopStatus_ || tryStopFlag_) {
             return;
         }
-        NETMGR_LOGI("stop thread...");
+        NETMGR_LOG_D("stop thread...");
         tryStopFlag_ = true;
         std::unique_lock<std::mutex> locker(mutex_);
         timerCond_.wait(locker, [this] { return stopStatus_ == true; });

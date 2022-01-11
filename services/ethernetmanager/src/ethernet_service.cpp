@@ -15,8 +15,12 @@
 
 #include "ethernet_service.h"
 
+#include <sys/time.h>
+#include <unistd.h>
+
 #include "net_mgr_log_wrapper.h"
 #include "ethernet_constants.h"
+#include "net_manager_center.h"
 
 namespace OHOS {
 namespace NetManagerStandard {
@@ -33,13 +37,16 @@ EthernetService::~EthernetService() {}
 
 void EthernetService::OnStart()
 {
-    NETMGR_LOGI("EthernetService::OnStart");
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    NETMGR_LOG_D("EthernetService::OnStart begin timestamp [%{public}" PRId64 ".%{public}" PRId64 "]",
+        tv.tv_sec, tv.tv_usec);
     if (state_ == STATE_RUNNING) {
-        NETMGR_LOGI("EthernetService the state is already running");
+        NETMGR_LOG_D("EthernetService the state is already running");
         return;
     }
     if (!Init()) {
-        NETMGR_LOGE("EthernetService init failed");
+        NETMGR_LOG_E("EthernetService init failed");
         return;
     }
     nlkRtnl_.Init();
@@ -48,6 +55,9 @@ void EthernetService::OnStart()
         ethManagement_->RegisterNlk(nlkRtnl_);
     }
     state_ = STATE_RUNNING;
+    gettimeofday(&tv, NULL);
+    NETMGR_LOG_D("EthernetService::OnStart end timestamp [%{public}" PRId64 ".%{public}" PRId64 "]",
+        tv.tv_sec, tv.tv_usec);
 }
 
 void EthernetService::OnStop()
@@ -59,23 +69,25 @@ void EthernetService::OnStop()
 bool EthernetService::Init()
 {
     if (!REGISTER_LOCAL_RESULT_ETH) {
-        NETMGR_LOGE("EthernetService Register to local sa manager failed");
+        NETMGR_LOG_E("EthernetService Register to local sa manager failed");
         return false;
     }
     if (!registerToService_) {
         if (!Publish(DelayedSingleton<EthernetService>::GetInstance().get())) {
-            NETMGR_LOGE("EthernetService Register to sa manager failed");
+            NETMGR_LOG_E("EthernetService Register to sa manager failed");
             return false;
         }
         registerToService_ = true;
     }
-    NETMGR_LOGI("GetEthernetServer suc");
+    serviceComm_ = (std::make_unique<EthernetServiceCommon>()).release();
+    NetManagerCenter::GetInstance().RegisterEthernetService(serviceComm_);
+    NETMGR_LOG_D("GetEthernetServer suc");
     return true;
 }
 
 int32_t EthernetService::SetIfaceConfig(const std::string &iface, sptr<InterfaceConfiguration> &ic)
 {
-    NETMGR_LOGI("EthernetService SetIfaceConfig processing");
+    NETMGR_LOG_D("EthernetService SetIfaceConfig processing");
     if (ethManagement_ != nullptr) {
         return ethManagement_->UpdateDevInterfaceState(iface, ic);
     } else {
@@ -85,7 +97,7 @@ int32_t EthernetService::SetIfaceConfig(const std::string &iface, sptr<Interface
 
 sptr<InterfaceConfiguration> EthernetService::GetIfaceConfig(const std::string &iface)
 {
-    NETMGR_LOGI("EthernetService GetIfaceConfig processing");
+    NETMGR_LOG_D("EthernetService GetIfaceConfig processing");
     if (ethManagement_ != nullptr) {
         return ethManagement_->GetDevInterfaceCfg(iface);
     } else {
@@ -93,21 +105,33 @@ sptr<InterfaceConfiguration> EthernetService::GetIfaceConfig(const std::string &
     }
 }
 
-int32_t EthernetService::IsActivate(const std::string &iface)
+int32_t EthernetService::IsIfaceActive(const std::string &iface)
 {
+    NETMGR_LOG_D("EthernetService IsIfaceActive processing");
     if (ethManagement_ != nullptr) {
-        return ethManagement_->IsActivate(iface);
+        return ethManagement_->IsIfaceActive(iface);
     } else {
         return ETHERNET_ERROR;
     }
 }
 
-std::vector<std::string> EthernetService::GetActivateInterfaces()
+std::vector<std::string> EthernetService::GetAllActiveIfaces()
 {
+    NETMGR_LOG_D("EthernetService GetAllActiveIfaces processing");
     if (ethManagement_ != nullptr) {
-        return ethManagement_->GetActivateInterfaces();
+        return ethManagement_->GetAllActiveIfaces();
     } else {
         return {};
+    }
+}
+
+int32_t EthernetService::ResetFactory()
+{
+    NETMGR_LOG_D("EthernetService ResetFactory processing");
+    if (ethManagement_ != nullptr) {
+        return ethManagement_->ResetFactory();
+    } else {
+        return ETHERNET_ERROR;
     }
 }
 } // namespace NetManagerStandard

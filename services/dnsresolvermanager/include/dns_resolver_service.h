@@ -19,13 +19,13 @@
 #include "singleton.h"
 #include "system_ability.h"
 
-#include "ipc/dns_resolver_service_stub.h"
+#include "dns_resolver_service_stub.h"
+#include "dns_service_iface.h"
 
 namespace OHOS {
 namespace NetManagerStandard {
 class DnsResolverService : public SystemAbility,
-                            public DnsResolverServiceStub,
-                            public std::enable_shared_from_this<DnsResolverService> {
+    public DnsResolverServiceStub, public std::enable_shared_from_this<DnsResolverService> {
     DECLARE_DELAYED_SINGLETON(DnsResolverService)
     DECLARE_SYSTEM_ABILITY(DnsResolverService)
 
@@ -39,6 +39,7 @@ public:
     void OnStop() override;
 
     int32_t GetAddressesByName(const std::string &hostName, std::vector<INetAddr> &addrInfo) override;
+    int32_t GetAddressesByName(const std::string &hostName, uint16_t netId, std::vector<INetAddr> &addrInfo);
     int32_t GetAddrInfo(const std::string &hostName, const std::string &server,
         const sptr<DnsAddrInfo> &hints, std::vector<sptr<DnsAddrInfo>> &dnsAddrInfo) override;
     int32_t CreateNetworkCache(uint16_t netId) override;
@@ -55,6 +56,7 @@ private:
 private:
     ServiceRunningState state_ = ServiceRunningState::STATE_STOPPED;
     bool registerToService_ = false;
+    sptr<DnsServiceIface> serviceIface_ = nullptr;
 };
 } // namespace NetManagerStandard
 } // namespace OHOS

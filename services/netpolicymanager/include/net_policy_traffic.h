@@ -19,22 +19,57 @@
 #include "singleton.h"
 #include "system_ability.h"
 
-#include "ipc/net_policy_service_stub.h"
+#include "i_net_stats_service.h"
+#include "net_policy_callback.h"
+#include "net_policy_service_stub.h"
 #include "net_policy_file.h"
 
 namespace OHOS {
 namespace NetManagerStandard {
+constexpr int16_t NET_POLICY_LEAP_YEAR_ONE = 1;
+constexpr int16_t NET_POLICY_LEAP_YEAR_FOUR = 4;
+constexpr int16_t NET_POLICY_LEAP_YEAR_ONEHUNDRED = 100;
+constexpr int16_t NET_POLICY_LEAP_YEAR_FOURHUNDRED = 400;
+constexpr int16_t NET_POLICY_FEBRUARY = 1;
+constexpr int32_t NET_POLICY_ONEDAYTIME = 86400;
+constexpr int16_t MONTH_TWENTY_EIGHT = 28;
+constexpr int16_t MONTH_THIRTY = 30;
+constexpr int16_t MONTH_THIRTY_ONE = 31;
+
 class NetPolicyTraffic : public virtual RefBase {
 public:
     NetPolicyTraffic(sptr<NetPolicyFile> netPolicyFile);
+    NetPolicyResultCode AddPolicyByUid(uint32_t uid, NetUidPolicy policy);
+    NetPolicyResultCode SetPolicyByUid(uint32_t uid, NetUidPolicy policy);
+    NetPolicyResultCode DeletePolicyByUid(uint32_t uid, NetUidPolicy policy);
     bool IsUidPolicyExist(uint32_t uid);
-    NetPolicyResultCode AddUidPolicy(uint32_t uid, NetUidPolicy policy);
-    NetPolicyResultCode SetUidPolicy(uint32_t uid, NetUidPolicy policy);
-    NetPolicyResultCode DeleteUidPolicy(uint32_t uid, NetUidPolicy policy);
-    bool IsPolicyValid(NetUidPolicy &policy);
+    NetPolicyResultCode SetNetPolicies(const std::vector<NetPolicyQuotaPolicy> &quotaPolicies,
+        const sptr<NetPolicyCallback> &netPolicyCallback);
+    NetPolicyResultCode SetCellularPolicies(const std::vector<NetPolicyCellularPolicy> &cellularPolicies,
+        const sptr<NetPolicyCallback> &netPolicyCallback);
+    NetPolicyResultCode SetSnoozePolicy(const NetPolicyQuotaPolicy &quotaPolicy,
+        const sptr<NetPolicyCallback> &netPolicyCallback);
+    NetPolicyResultCode SetIdleTrustlist(uint32_t uid, bool isTrustlist);
+    NetPolicyResultCode GetIdleTrustlist(std::vector<uint32_t> &uids);
+    void ClearIdleTrustList();
+
+private:
+    bool IsPolicyValid(NetUidPolicy policy);
+    bool IsNetPolicyTypeValid(NetQuotaPolicyType netType);
+    bool IsNetPolicyPeriodDurationValid(const std::string &periodDuration);
+    void CheckNetStatsOverLimit(const std::vector<NetPolicyQuotaPolicy> &quotaPolicies,
+        const sptr<NetPolicyCallback> netPolicyCallback);
+    void CheckNetStatsOverLimit(const std::vector<NetPolicyCellularPolicy> &cellularPolicies,
+        const sptr<NetPolicyCallback> netPolicyCallback);
+    int32_t GetPeriodEndTime();
+    int64_t GetCurrentTime();
+    void InitController();
+    bool IsQuotaPolicyExist(const NetPolicyQuotaPolicy &quotaPolicy);
 
 private:
     sptr<NetPolicyFile> netPolicyFile_;
+    std::vector<uint16_t> monthDay_;
+    std::vector<uint32_t> idleTrustList_;
 };
 } // namespace NetManagerStandard
 } // namespace OHOS

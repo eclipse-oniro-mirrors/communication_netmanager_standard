@@ -33,6 +33,7 @@ struct DnsResolverAsyncContext {
     // Data context
     char host[HOST_MAX_BYTES] = {0};
     size_t hostRealBytes = 0;
+    int32_t result = 0;
     std::vector<std::string> hostAddress;
 };
 

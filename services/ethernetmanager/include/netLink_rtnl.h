@@ -45,7 +45,6 @@ public:
     void NetLinkListenerThead();
     void Init();
     void RegisterHandle(sptr<NlkEventHandle> h);
-    static int32_t SetIpAddr(const std::string &ifName, const std::string &ip);
     static std::vector<uint8_t> GetHWaddr(const std::string &devName);
     static void GetLinkInfo(std::vector<NlkEventInfo> &infos);
 

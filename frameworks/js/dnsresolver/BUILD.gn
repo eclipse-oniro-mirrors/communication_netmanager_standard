@@ -26,7 +26,7 @@ ohos_shared_library("dnsresolver") {
     "$NETMANAGER_BASE_ROOT/utils/log/include",
     "$DNSRESOLVERMANAGER_SOURCE_DIR/include",
     "$DNSRESOLVERMANAGER_SOURCE_DIR/include/ipc",
-    "$INNERKITS_ROOT/native/netconnmanager/include",
+    "$INNERKITS_ROOT/netconnclient/include",
   ]
 
   sources = [
@@ -37,8 +37,8 @@ ohos_shared_library("dnsresolver") {
   defines = [ "NETMGR_DEBUG" ]
 
   deps = [
-    "$INNERKITS_ROOT/native/dnsresolvermanager:dns_resolver_manager_if",
-    "$INNERKITS_ROOT/native/netconnmanager:net_conn_manager_if",
+    "$INNERKITS_ROOT/dnsresolverclient:dns_resolver_manager_if",
+    "$INNERKITS_ROOT/netconnclient:net_conn_manager_if",
     "//foundation/aafwk/standard/frameworks/kits/ability/native:abilitykit_native",
     "//foundation/ace/napi/:ace_napi",
     "//utils/native/base:utils",
@@ -51,7 +51,7 @@ ohos_shared_library("dnsresolver") {
     "samgr_standard:samgr_proxy",
   ]
 
-  relative_install_dir = "module"
+  relative_install_dir = "module/netmanager"
   part_name = "netmanager_standard"
   subsystem_name = "communication"
 }

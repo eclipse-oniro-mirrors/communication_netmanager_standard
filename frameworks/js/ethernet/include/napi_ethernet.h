@@ -18,7 +18,6 @@
 
 #include <string>
 #include <vector>
-
 #include "napi/native_api.h"
 #include "napi/native_node_api.h"
 
@@ -72,15 +71,15 @@ public:
     static void CompleteSetIfaceConfig(napi_env env, napi_status status, void *data);
     static void ExecGetIfaceConfig(napi_env env, void *data);
     static void CompleteGetIfaceConfig(napi_env env, napi_status status, void *data);
-    static void ExecIsActivate(napi_env env, void *data);
-    static void CompleteIsActivate(napi_env env, napi_status status, void *data);
-    static void ExecGetActivateInterfaces(napi_env env, void *data);
-    static void CompleteGetActivateInterfaces(napi_env env, napi_status status, void *data);
+    static void ExecIsIfaceActive(napi_env env, void *data);
+    static void CompleteIsIfaceActive(napi_env env, napi_status status, void *data);
+    static void ExecGetAllActiveIfaces(napi_env env, void *data);
+    static void CompleteGetAllActiveIfaces(napi_env env, napi_status status, void *data);
     // define napi interface for JS
     static napi_value SetIfaceConfig(napi_env env, napi_callback_info info);
     static napi_value GetIfaceConfig(napi_env env, napi_callback_info info);
-    static napi_value IsActivate(napi_env env, napi_callback_info info);
-    static napi_value GetActivateInterfaces(napi_env env, napi_callback_info info);
+    static napi_value IsIfaceActive(napi_env env, napi_callback_info info);
+    static napi_value GetAllActiveIfaces(napi_env env, napi_callback_info info);
 };
 } // namespace NetManagerStandard
 } // namespace OHOS

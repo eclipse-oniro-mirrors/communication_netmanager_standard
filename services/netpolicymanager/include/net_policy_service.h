@@ -17,12 +17,17 @@
 #define NET_POLICY_SERVICE_H
 
 #include <mutex>
+
 #include "singleton.h"
 #include "system_ability.h"
+#include "system_ability_definition.h"
 
+#include "net_policy_callback.h"
 #include "net_policy_traffic.h"
+#include "net_policy_firewall.h"
 
-#include "ipc/net_policy_service_stub.h"
+#include "net_policy_service_stub.h"
+#include "net_policy_service_common.h"
 
 namespace OHOS {
 namespace NetManagerStandard {
@@ -35,19 +40,26 @@ class NetPolicyService : public SystemAbility,
 public:
     void OnStart() override;
     void OnStop() override;
-    /**
-     * @brief The interface is set uid policy
-     *
-     * @param uid uid
-     * @param policy policy
-     *
-     * @return Returns 0 success, otherwise fail
-     */
-    NetPolicyResultCode SetUidPolicy(uint32_t uid, NetUidPolicy policy) override;
-    NetUidPolicy GetUidPolicy(uint32_t uid) override;
-    std::vector<uint32_t> GetUids(NetUidPolicy policy) override;
+
+    NetPolicyResultCode SetPolicyByUid(uint32_t uid, NetUidPolicy policy) override;
+    NetUidPolicy GetPolicyByUid(uint32_t uid) override;
+    std::vector<uint32_t> GetUidsByPolicy(NetUidPolicy policy) override;
     bool IsUidNetAccess(uint32_t uid, bool metered) override;
     bool IsUidNetAccess(uint32_t uid, const std::string &ifaceName) override;
+    int32_t RegisterNetPolicyCallback(const sptr<INetPolicyCallback> &callback) override;
+    int32_t UnregisterNetPolicyCallback(const sptr<INetPolicyCallback> &callback) override;
+    NetPolicyResultCode SetNetPolicies(const std::vector<NetPolicyQuotaPolicy> &quotaPolicies) override;
+    NetPolicyResultCode GetNetPolicies(std::vector<NetPolicyQuotaPolicy> &quotaPolicies) override;
+    NetPolicyResultCode SetCellularPolicies(const std::vector<NetPolicyCellularPolicy> &cellularPolicies) override;
+    NetPolicyResultCode GetCellularPolicies(std::vector<NetPolicyCellularPolicy> &cellularPolicies) override;
+    NetPolicyResultCode ResetFactory(const std::string &subscriberId) override;
+    NetPolicyResultCode SetBackgroundPolicy(bool backgroundPolicy) override;
+    bool GetBackgroundPolicy() override;
+    bool GetBackgroundPolicyByUid(uint32_t uid) override;
+    NetBackgroundPolicy GetCurrentBackgroundPolicy() override;
+    NetPolicyResultCode SetSnoozePolicy(const NetPolicyQuotaPolicy &quotaPolicy) override;
+    NetPolicyResultCode SetIdleTrustlist(uint32_t uid, bool isTrustlist) override;
+    NetPolicyResultCode GetIdleTrustlist(std::vector<uint32_t> &uids) override;
 
 private:
     bool Init();
@@ -59,9 +71,12 @@ private:
     };
 
     sptr<NetPolicyTraffic> netPolicyTraffic_;
+    sptr<NetPolicyFirewall> netPolicyFirewall_;
     sptr<NetPolicyFile> netPolicyFile_;
     bool registerToService_;
     ServiceRunningState state_;
+    sptr<NetPolicyCallback> netPolicyCallback_;
+    sptr<NetPolicyServiceCommon> serviceComm_ = nullptr;
     std::mutex mutex_;
 };
 } // namespace NetManagerStandard

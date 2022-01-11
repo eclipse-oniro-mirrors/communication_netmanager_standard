@@ -18,12 +18,14 @@
 #include <regex>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <sys/time.h>
+#include <unistd.h>
 
 #include "system_ability_definition.h"
-
-#include "dns_resolver_constants.h"
-#include "net_mgr_log_wrapper.h"
 #include "netd_controller.h"
+#include "net_manager_center.h"
+#include "net_mgr_log_wrapper.h"
+#include "dns_resolver_constants.h"
 
 namespace OHOS {
 namespace NetManagerStandard {
@@ -40,16 +42,22 @@ DnsResolverService::~DnsResolverService() {}
 
 void DnsResolverService::OnStart()
 {
-    NETMGR_LOGI("DnsResolverService::OnStart");
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    NETMGR_LOG_D("DnsResolverService::OnStart begin timestamp [%{public}" PRId64 ".%{public}" PRId64 "]",
+        tv.tv_sec, tv.tv_usec);
     if (state_ == STATE_RUNNING) {
-        NETMGR_LOGI("DnsResolverService the state is already running");
+        NETMGR_LOG_D("DnsResolverService the state is already running");
         return;
     }
     if (!Init()) {
-        NETMGR_LOGE("DnsResolverService init failed");
+        NETMGR_LOG_E("DnsResolverService init failed");
         return;
     }
     state_ = STATE_RUNNING;
+    gettimeofday(&tv, NULL);
+    NETMGR_LOG_D("DnsResolverService::OnStart end timestamp [%{public}" PRId64 ".%{public}" PRId64 "]",
+        tv.tv_sec, tv.tv_usec);
 }
 
 void DnsResolverService::OnStop()
@@ -61,20 +69,23 @@ void DnsResolverService::OnStop()
 bool DnsResolverService::Init()
 {
     if (!REGISTER_LOCAL_RESULT_DNS) {
-        NETMGR_LOGE("DnsResolverService Register to local sa manager failed");
+        NETMGR_LOG_E("DnsResolverService Register to local sa manager failed");
         return false;
     }
     if (!registerToService_) {
         if (!Publish(DelayedSingleton<DnsResolverService>::GetInstance().get())) {
-            NETMGR_LOGE("DnsResolverService Register to sa manager failed");
+            NETMGR_LOG_E("DnsResolverService Register to sa manager failed");
             return false;
         }
         registerToService_ = true;
     }
-    NETMGR_LOGI("GetDnsServer suc");
+    serviceIface_ = std::make_unique<DnsServiceIface>().release();
+    NetManagerCenter::GetInstance().RegisterDnsService(serviceIface_);
+    NETMGR_LOG_D("GetDnsServer suc");
     return true;
 }
 
+#ifndef SYS_DNS
 static void FreeAddrInfo2(struct addrinfo *aiHead)
 {
     struct addrinfo *ai = nullptr, *aiNext = nullptr;
@@ -94,6 +105,7 @@ static void FreeAddrInfo2(struct addrinfo *aiHead)
         }
     }
 }
+#endif
 
 static bool IsDomainValid(const std::string &hostName)
 {
@@ -142,24 +154,30 @@ inline void InitAddrInfo(struct addrinfo &hints, int32_t family, int32_t flags, 
 
 int32_t DnsResolverService::GetAddressesByName(const std::string &hostName, std::vector<INetAddr> &addrInfo)
 {
+    return GetAddressesByName(hostName, 0, addrInfo);
+}
+
+int32_t DnsResolverService::GetAddressesByName(const std::string &hostName, uint16_t netId,
+    std::vector<INetAddr> &addrInfo)
+{
+    NETMGR_LOG_D("Enter GetAddressesByName.");
     if (!IsDomainValid(hostName)) {
-        NETMGR_LOGE("Invalid domain name format");
+        NETMGR_LOG_E("Invalid domain name format");
         return DNS_ERROR;
     }
     struct addrinfo hints;
     InitAddrInfo(hints, AF_INET, AI_PASSIVE, 0, SOCK_DGRAM);
     std::unique_ptr<addrinfo> res;
     std::string server;
-    uint16_t netId = 0;
-    int32_t ret = NetdController::GetInstance()->GetAddrInfo(hostName, server, hints, res, netId);
+    int32_t ret = NetdController::GetInstance().GetAddrInfo(hostName, server, hints, res, netId);
     if (ret != 0) {
-        NETMGR_LOGE("GetAddressesByName Call GetAddrInfo of NetdController ret[%{public}d]", ret);
+        NETMGR_LOG_E("GetAddressesByName Call GetAddrInfo of NetdController ret[%{public}d]", ret);
         return ret;
     }
     struct addrinfo *cur = nullptr;
     struct addrinfo *resAddr = res.release();
     if (resAddr == nullptr) {
-        NETMGR_LOGE("GetAddrInfo of NetdController return resAddr error");
+        NETMGR_LOG_E("GetAddrInfo of NetdController return resAddr error");
         return DNS_ERROR;
     }
     for (cur = resAddr; cur != nullptr; cur = cur->ai_next) {
@@ -170,9 +188,13 @@ int32_t DnsResolverService::GetAddressesByName(const std::string &hostName, std:
         }
     }
     if (resAddr != nullptr) {
+#ifdef SYS_DNS
+        freeaddrinfo(resAddr);
+#else
         FreeAddrInfo2(resAddr);
+#endif
     }
-    NETMGR_LOGE("GetAddressesByName addrInfo size [%{public}d]", addrInfo.size());
+    NETMGR_LOG_E("GetAddressesByName addrInfo size [%{public}zd]", addrInfo.size());
     return DNS_SUCCESS;
 }
 
@@ -186,7 +208,7 @@ int32_t DnsResolverService::GetAddrInfo(const std::string &hostName, const std::
     InitAddrInfo(hints2, hints->family_, hints->flags_, hints->protocol_, hints->sockType_);
     std::unique_ptr<addrinfo> res;
     uint16_t netId = 0;
-    int32_t ret = NetdController::GetInstance()->GetAddrInfo(hostName, server, hints2, res, netId);
+    int32_t ret = NetdController::GetInstance().GetAddrInfo(hostName, server, hints2, res, netId);
     if (ret < 0) {
         return ret;
     }
@@ -218,35 +240,35 @@ int32_t DnsResolverService::GetAddrInfo(const std::string &hostName, const std::
 
 int32_t DnsResolverService::CreateNetworkCache(uint16_t netId)
 {
-    NETMGR_LOGI("DnsResolverService CreateNetworkCache netId[%{public}d]", netId);
-    return static_cast<int32_t>(NetdController::GetInstance()->CreateNetworkCache(netId));
+    NETMGR_LOG_D("DnsResolverService CreateNetworkCache netId[%{public}d]", netId);
+    return static_cast<int32_t>(NetdController::GetInstance().CreateNetworkCache(netId));
 }
 
 int32_t DnsResolverService::DestoryNetworkCache(uint16_t netId)
 {
-    NETMGR_LOGI("DnsResolverService DestoryNetworkCache netId[%{public}d]", netId);
-    return static_cast<int32_t>(NetdController::GetInstance()->DestoryNetworkCache(netId));
+    NETMGR_LOG_D("DnsResolverService DestoryNetworkCache netId[%{public}d]", netId);
+    return static_cast<int32_t>(NetdController::GetInstance().DestoryNetworkCache(netId));
 }
 
 int32_t DnsResolverService::FlushNetworkCache(uint16_t netId)
 {
-    NETMGR_LOGI("DnsResolverService FlushNetworkCache netId[%{public}d]", netId);
-    return static_cast<int32_t>(NetdController::GetInstance()->FlushNetworkCache(netId));
+    NETMGR_LOG_D("DnsResolverService FlushNetworkCache netId[%{public}d]", netId);
+    return static_cast<int32_t>(NetdController::GetInstance().FlushNetworkCache(netId));
 }
 
 int32_t DnsResolverService::SetResolverConfig(uint16_t netId, uint16_t baseTimeoutMsec, uint8_t retryCount,
     const std::vector<std::string> &servers, const std::vector<std::string> &domains)
 {
-    NETMGR_LOGI("DnsResolverService SetResolverConfig netId[%{public}d]", netId);
-    return static_cast<int32_t>(NetdController::GetInstance()->SetResolverConfig(netId, baseTimeoutMsec,
+    NETMGR_LOG_D("DnsResolverService SetResolverConfig netId[%{public}d]", netId);
+    return static_cast<int32_t>(NetdController::GetInstance().SetResolverConfig(netId, baseTimeoutMsec,
         retryCount, servers, domains));
 }
 
 int32_t DnsResolverService::GetResolverInfo(uint16_t netId, std::vector<std::string> &servers,
     std::vector<std::string> &domains, uint16_t &baseTimeoutMsec, uint8_t &retryCount)
 {
-    NETMGR_LOGI("DnsResolverService GetResolverInfo netId[%{public}d]", netId);
-    return static_cast<int32_t>(NetdController::GetInstance()->GetResolverInfo(netId, servers, domains,
+    NETMGR_LOG_D("DnsResolverService GetResolverInfo netId[%{public}d]", netId);
+    return static_cast<int32_t>(NetdController::GetInstance().GetResolverInfo(netId, servers, domains,
         baseTimeoutMsec, retryCount));
 }
 } // namespace NetManagerStandard

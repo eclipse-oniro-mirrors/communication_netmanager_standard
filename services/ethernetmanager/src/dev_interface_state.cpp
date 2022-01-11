@@ -15,7 +15,8 @@
 
 #include "dev_interface_state.h"
 
-#include "net_conn_client.h"
+#include "netd_controller.h"
+#include "net_manager_center.h"
 #include "net_mgr_log_wrapper.h"
 
 #include "netLink_rtnl.h"
@@ -125,57 +126,55 @@ bool DevInterfaceState::GetDhcpReqState() const
     return dhcpReqState_;
 }
 
-int32_t DevInterfaceState::RemoteRegisterNetSupplier()
+void DevInterfaceState::RemoteRegisterNetSupplier()
 {
     if (connLinkState_ == UNREGISTERED) {
-        netSupplier_ = DelayedSingleton<NetConnClient>::GetInstance()->RegisterNetSupplier(networkType_,
-            devName_, netCapabilities_);
-        if (netSupplier_ > MINIMUM_SUPPLIER_ID) {
+        int32_t result = NetManagerCenter::GetInstance().RegisterNetSupplier(networkType_,
+            devName_, netCapabilities_, netSupplier_);
+        if (result == 0) {
             connLinkState_ = REGISTERED;
         }
-        NETMGR_LOGI("DevInterfaceCfg RemoteRegisterNetSupplier netSupplier_[%{public}d]", netSupplier_);
+        NETMGR_LOG_D("DevInterfaceCfg RemoteRegisterNetSupplier netSupplier_[%{public}d]", netSupplier_);
     }
-    return netSupplier_;
 }
 
-int32_t DevInterfaceState::RemoteUnregisterNetSupplier()
+void DevInterfaceState::RemoteUnregisterNetSupplier()
 {
     if (connLinkState_ == UNREGISTERED) {
-        return NETMANAGER_ERROR;
+        return;
     }
-    int ret = DelayedSingleton<NetConnClient>::GetInstance()->UnregisterNetSupplier(netSupplier_);
+    int ret = NetManagerCenter::GetInstance().UnregisterNetSupplier(netSupplier_);
     if (!ret) {
         connLinkState_ = UNREGISTERED;
         netSupplier_ = 0;
     }
-    return ret;
 }
 
-int32_t DevInterfaceState::RemoteUpdateNetLinkInfo()
+void DevInterfaceState::RemoteUpdateNetLinkInfo()
 {
     if (connLinkState_ == LINK_UNAVAILABLE) {
-        NETMGR_LOGE("DevInterfaceCfg RemoteUpdateNetLinkInfo regState_:LINK_UNAVAILABLE");
-        return NETMANAGER_ERROR;
+        NETMGR_LOG_E("DevInterfaceCfg RemoteUpdateNetLinkInfo regState_:LINK_UNAVAILABLE");
+        return;
     }
     if (linkInfo_ == nullptr) {
-        NETMGR_LOGE("DevInterfaceCfg RemoteUpdateNetLinkInfo linkInfo_ is nullptr");
-        return NETMANAGER_ERROR;
+        NETMGR_LOG_E("DevInterfaceCfg RemoteUpdateNetLinkInfo linkInfo_ is nullptr");
+        return;
     }
-    return DelayedSingleton<NetConnClient>::GetInstance()->UpdateNetLinkInfo(netSupplier_, linkInfo_);
+    NetManagerCenter::GetInstance().UpdateNetLinkInfo(netSupplier_, linkInfo_);
 }
 
-int32_t DevInterfaceState::RemoteUpdateNetSupplierInfo()
+void DevInterfaceState::RemoteUpdateNetSupplierInfo()
 {
     if (connLinkState_ == UNREGISTERED) {
-        NETMGR_LOGE("DevInterfaceCfg RemoteUpdateNetSupplierInfo regState_:UNREGISTERED");
-        return NETMANAGER_ERROR;
+        NETMGR_LOG_E("DevInterfaceCfg RemoteUpdateNetSupplierInfo regState_:UNREGISTERED");
+        return;
     }
     if (netSupplierInfo_ == nullptr) {
-        NETMGR_LOGE("DevInterfaceCfg RemoteUpdateNetSupplierInfo netSupplierInfo_ is nullptr");
-        return NETMANAGER_ERROR;
+        NETMGR_LOG_E("DevInterfaceCfg RemoteUpdateNetSupplierInfo netSupplierInfo_ is nullptr");
+        return;
     }
     UpdateSupplierAvailable();
-    return DelayedSingleton<NetConnClient>::GetInstance()->UpdateNetSupplierInfo(netSupplier_, netSupplierInfo_);
+    NetManagerCenter::GetInstance().UpdateNetSupplierInfo(netSupplier_, netSupplierInfo_);
 }
 
 void DevInterfaceState::UpdateLinkInfo()
@@ -189,6 +188,7 @@ void DevInterfaceState::UpdateLinkInfo()
     std::list<INetAddr>().swap(linkInfo_->netAddrList_);
     std::list<Route>().swap(linkInfo_->routeList_);
     std::list<INetAddr>().swap(linkInfo_->dnsList_);
+    linkInfo_->ifaceName_ = devName_;
     linkInfo_->netAddrList_.push_back(ifcfg_->ipStatic_.ipAddr_);
     struct Route route;
     route.iface_ = devName_;
@@ -200,53 +200,37 @@ void DevInterfaceState::UpdateLinkInfo()
     }
 }
 
-void DevInterfaceState::UpdateLinkInfo(const std::string &iface, const OHOS::Wifi::DhcpResult &result)
+void DevInterfaceState::UpdateLinkInfo(const INetAddr &ipAddr, const INetAddr &gateWay,
+    const INetAddr &route, const INetAddr &dns1, const INetAddr &dns2)
 {
-    NETMGR_LOGI("DevInterfaceCfg::UpdateLinkInfo");
+    NETMGR_LOG_D("DevInterfaceCfg::UpdateLinkInfo");
     if (linkInfo_ == nullptr) {
         linkInfo_ = std::make_unique<NetLinkInfo>().release();
     }
     std::list<INetAddr>().swap(linkInfo_->netAddrList_);
     std::list<Route>().swap(linkInfo_->routeList_);
-    INetAddr ipAddr;
-    ipAddr.type_ = result.iptype;
-    ipAddr.address_ = result.strYourCli;
+    std::list<INetAddr>().swap(linkInfo_->dnsList_);
+    linkInfo_->ifaceName_ = devName_;
     linkInfo_->netAddrList_.push_back(ipAddr);
-    struct Route route;
+    struct Route routeStc;
     INetAddr gate;
     INetAddr destination;
-    route.iface_ = iface;
-    if (result.strServer != result.strRouter1) {
-        gate.address_ = result.strServer;
-        if (result.strRouter1 == "*") {
-            destination.address_ = "0.0.0.0";
-        } else {
-            destination.address_ = result.strRouter1;
-        }
-        route.destination_ = destination;
-        route.gateway_ = gate;
-        linkInfo_->routeList_.push_back(route);
-    }
-    if (result.strServer != result.strRouter2) {
-        gate.address_ = result.strServer;
-        if (result.strRouter2 == "*") {
-            destination.address_ = "0.0.0.0";
-        } else {
-            destination.address_ = result.strRouter2;
-        }
-        route.destination_ = destination;
-        route.gateway_ = gate;
-        linkInfo_->routeList_.push_back(route);
-    }
-    ipAddr.address_ = result.strDns1;
-    linkInfo_->dnsList_.push_back(ipAddr);
-    ipAddr.address_ = result.strDns2;
-    linkInfo_->dnsList_.push_back(ipAddr);
+    routeStc.iface_ = devName_;
+    routeStc.destination_ = route;
+    routeStc.gateway_ = gateWay;
+    linkInfo_->routeList_.push_back(routeStc);
+    linkInfo_->dnsList_.push_back(dns1);
+    linkInfo_->dnsList_.push_back(dns2);
 }
 
 void DevInterfaceState::SetIpAddr()
 {
-    NetLinkRtnl::SetIpAddr(devName_, ifcfg_->ipStatic_.ipAddr_.address_);
+    if (!(ifcfg_->ipStatic_.ipAddr_.address_.empty())) {
+        NETMGR_LOG_D("DevInterfaceState SetIpAddr devName[%{public}s] address_[%{public}s] prefixlen_[%{public}d]",
+            devName_.c_str(), ifcfg_->ipStatic_.ipAddr_.address_.c_str(), ifcfg_->ipStatic_.ipAddr_.prefixlen_);
+        NetdController::GetInstance().InterfaceAddAddress(devName_, ifcfg_->ipStatic_.ipAddr_.address_,
+            ifcfg_->ipStatic_.ipAddr_.prefixlen_);
+    }
 }
 
 void  DevInterfaceState::UpdateSupplierAvailable()
