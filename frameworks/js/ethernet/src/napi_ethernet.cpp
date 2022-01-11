@@ -28,16 +28,16 @@ NapiEthernet::NapiEthernet() {}
 
 void NapiEthernet::ExecSetIfaceConfig(napi_env env, void *data)
 {
-    NETMGR_LOGI("ExecSetIfaceConfig");
+    NETMGR_LOG_D("ExecSetIfaceConfig");
     EthernetAsyncContext *context = (EthernetAsyncContext *)data;
     if (context == nullptr) {
-        NETMGR_LOGE("context == nullptr");
+        NETMGR_LOG_E("context == nullptr");
         return;
     }
     INetAddr addr0, addr1;
     sptr<InterfaceConfiguration> config = std::make_unique<InterfaceConfiguration>().release();
     if (config == nullptr) {
-        NETMGR_LOGE("config == nullptr");
+        NETMGR_LOG_E("config == nullptr");
         return;
     }
     addr0.address_ = context->dns0AddrInfo;
@@ -51,19 +51,23 @@ void NapiEthernet::ExecSetIfaceConfig(napi_env env, void *data)
     config->ipStatic_.dnsServers_.push_back(addr1);
     context->result = DelayedSingleton<EthernetClient>::GetInstance()->SetIfaceConfig(
         context->ethernetName, config);
-    NETMGR_LOGI("ExecSetIfaceConfig result =[%{public}d]", context->result);
+    NETMGR_LOG_D("ExecSetIfaceConfig result =[%{public}d]", context->result);
 }
 
 void NapiEthernet::CompleteSetIfaceConfig(napi_env env, napi_status status, void *data)
 {
-    NETMGR_LOGI("CompleteSetIfaceConfig");
+    NETMGR_LOG_D("CompleteSetIfaceConfig");
     EthernetAsyncContext* context = static_cast<EthernetAsyncContext *>(data);
     if (context == nullptr) {
-        NETMGR_LOGE("context == nullptr");
+        NETMGR_LOG_E("context == nullptr");
         return;
     }
     napi_value info = nullptr;
-    napi_create_int32(env, context->result, &info);
+    if (context->result != ERR_NONE) {
+        napi_create_int32(env, context->result, &info);
+    } else {
+        info = NapiCommon::CreateUndefined(env);
+    }
     if (context->callbackRef == nullptr) {
         // promiss return
         if (context->result != ERR_NONE) {
@@ -73,16 +77,16 @@ void NapiEthernet::CompleteSetIfaceConfig(napi_env env, napi_status status, void
         }
     } else {
         // call back return
-        napi_value callbackValues[static_cast<int32_t>(JS_CALLBACK_ARGV::CALLBACK_ARGV_CNT)] = {nullptr, nullptr};
+        napi_value callbackValues[CALLBACK_ARGV_CNT] = {nullptr, nullptr};
         napi_value recv = nullptr;
         napi_value result = nullptr;
         napi_value callbackFunc = nullptr;
         napi_get_undefined(env, &recv);
         napi_get_reference_value(env, context->callbackRef, &callbackFunc);
         if (context->result != ERR_NONE) {
-            callbackValues[static_cast<int32_t>(JS_CALLBACK_ARGV::CALLBACK_ARGV_INDEX_0)] = info;
+            callbackValues[CALLBACK_ARGV_INDEX_0] = info;
         } else {
-            callbackValues[static_cast<int32_t>(JS_CALLBACK_ARGV::CALLBACK_ARGV_INDEX_1)] = info;
+            callbackValues[CALLBACK_ARGV_INDEX_1] = info;
         }
         napi_call_function(env, recv, callbackFunc, std::size(callbackValues), callbackValues, &result);
         napi_delete_reference(env, context->callbackRef);
@@ -94,49 +98,52 @@ void NapiEthernet::CompleteSetIfaceConfig(napi_env env, napi_status status, void
 
 void NapiEthernet::ExecGetIfaceConfig(napi_env env, void *data)
 {
-    NETMGR_LOGI("ExecGetIfaceConfig");
+    NETMGR_LOG_I("ExecGetIfaceConfig");
     EthernetAsyncContext *context = (EthernetAsyncContext *)data;
     if (context == nullptr) {
-        NETMGR_LOGE("context == nullptr");
+        NETMGR_LOG_E("context == nullptr");
         return;
     }
     sptr<InterfaceConfiguration> config =
         DelayedSingleton<EthernetClient>::GetInstance()->GetIfaceConfig(context->ethernetName);
     if (config != nullptr) {
-        context->ifActivate = 1;
+        context->result = 1;
         std::string tap;
         context->ipMode = config->mode_;
-        NETMGR_LOGI("config->mode_ = [%{public}d]", config->mode_);
-        context->ipAddrInfo = config->ipStatic_.ipAddr_.ToString(tap);
-        NETMGR_LOGI("config->ipAddr_ = [%{public}s]", config->ipStatic_.ipAddr_.ToString(tap).c_str());
-        context->routeAddrInfo = config->ipStatic_.route_.ToString(tap);
-        NETMGR_LOGI("config->route_ = [%{public}s]", config->ipStatic_.route_.ToString(tap).c_str());
-        context->gateAddrInfo = config->ipStatic_.gate_.ToString(tap);
-        NETMGR_LOGI("config->gate_ = [%{public}s]", config->ipStatic_.gate_.ToString(tap).c_str());
-        context->maskAddrInfo = config->ipStatic_.netMask_.ToString(tap);
-        NETMGR_LOGI("config->netMask_ = [%{public}s]", config->ipStatic_.netMask_.ToString(tap).c_str());
+        NETMGR_LOG_I("config->mode_ = [%{public}d]", config->mode_);
+        context->ipAddrInfo = config->ipStatic_.ipAddr_.address_;
+        NETMGR_LOG_I("config->ipAddr_ = [%{public}s]", config->ipStatic_.ipAddr_.address_.c_str());
+        context->routeAddrInfo = config->ipStatic_.route_.address_;
+        NETMGR_LOG_I("config->route_ = [%{public}s]", config->ipStatic_.route_.address_.c_str());
+        context->gateAddrInfo = config->ipStatic_.gate_.address_;
+        NETMGR_LOG_I("config->gate_ = [%{public}s]", config->ipStatic_.gate_.address_.c_str());
+        context->maskAddrInfo = config->ipStatic_.netMask_.address_;
+        NETMGR_LOG_I("config->netMask_ = [%{public}s]", config->ipStatic_.netMask_.address_.c_str());
         for (auto it = config->ipStatic_.dnsServers_.begin(); it != config->ipStatic_.dnsServers_.end(); ++it) {
-            context->dns0AddrInfo = it->ToString(tap);
-            context->dns1AddrInfo = it->ToString(tap);
-            NETMGR_LOGI("config->dnsServers_ = [%{public}s]", it->ToString(tap).c_str());
+            if (context->dns0AddrInfo.empty()) {
+                context->dns0AddrInfo = it->address_;
+            } else if (context->dns1AddrInfo.empty()) {
+                context->dns1AddrInfo = it->address_;
+            }
+            NETMGR_LOG_I("config->dnsServers_ = [%{public}s]", it->ToString(tap).c_str());
         }
     } else {
-        context->ifActivate = -1;
+        context->result = -1;
     }
 }
 
 void NapiEthernet::CompleteGetIfaceConfig(napi_env env, napi_status status, void *data)
 {
-    NETMGR_LOGI("CompleteGetIfaceConfig");
+    NETMGR_LOG_I("CompleteGetIfaceConfig");
     EthernetAsyncContext* context = static_cast<EthernetAsyncContext *>(data);
     if (context == nullptr) {
-        NETMGR_LOGE("context == nullptr");
+        NETMGR_LOG_E("context == nullptr");
         return;
     }
     napi_value info = nullptr;
     napi_value infoFail = nullptr;
     napi_create_object(env, &info);
-    napi_create_string_utf8(env, "fail", NAPI_AUTO_LENGTH, &infoFail);
+    napi_create_int32(env, context->result, &infoFail);
     NapiCommon::SetPropertyInt32(env, info, "mode", context->ipMode);
     NapiCommon::SetPropertyString(env, info, "ipAddr", context->ipAddrInfo);
     NapiCommon::SetPropertyString(env, info, "routeAddr", context->routeAddrInfo);
@@ -145,22 +152,22 @@ void NapiEthernet::CompleteGetIfaceConfig(napi_env env, napi_status status, void
     NapiCommon::SetPropertyString(env, info, "dns0Addr", context->dns0AddrInfo);
     NapiCommon::SetPropertyString(env, info, "dns1Addr", context->dns1AddrInfo);
     if (context->callbackRef == nullptr) {
-        if (context->ifActivate == -1) {
+        if (context->result == -1) {
             NAPI_CALL_RETURN_VOID(env, napi_reject_deferred(env, context->deferred, infoFail));
         } else {
             NAPI_CALL_RETURN_VOID(env, napi_resolve_deferred(env, context->deferred, info));
         }
     } else {
-        napi_value callbackValues[static_cast<int32_t>(JS_CALLBACK_ARGV::CALLBACK_ARGV_CNT)] = {nullptr, nullptr};
+        napi_value callbackValues[CALLBACK_ARGV_CNT] = {nullptr, nullptr};
         napi_value recv = nullptr;
         napi_value result = nullptr;
         napi_value callbackFunc = nullptr;
         napi_get_undefined(env, &recv);
         napi_get_reference_value(env, context->callbackRef, &callbackFunc);
-        if (context->ifActivate == 0) {
-            callbackValues[static_cast<int32_t>(JS_ARGV_INDEX::ARGV_INDEX_0)] = infoFail;
+        if (context->result == -1) {
+            callbackValues[ARGV_INDEX_0] = infoFail;
         } else {
-            callbackValues[static_cast<int32_t>(JS_ARGV_INDEX::ARGV_INDEX_1)] = info;
+            callbackValues[ARGV_INDEX_1] = info;
         }
         napi_call_function(env, recv, callbackFunc, std::size(callbackValues), callbackValues, &result);
         napi_delete_reference(env, context->callbackRef);
@@ -170,46 +177,38 @@ void NapiEthernet::CompleteGetIfaceConfig(napi_env env, napi_status status, void
     context = nullptr;
 }
 
-void NapiEthernet::ExecIsActivate(napi_env env, void *data)
+void NapiEthernet::ExecIsIfaceActive(napi_env env, void *data)
 {
-    NETMGR_LOGI("ExecIsActivate");
+    NETMGR_LOG_I("ExecIsIfaceActive");
     EthernetAsyncContext *context = (EthernetAsyncContext *)data;
     if (context == nullptr) {
-        NETMGR_LOGE("context == nullptr");
+        NETMGR_LOG_E("context == nullptr");
         return;
     }
-    context->ifActivate = DelayedSingleton<EthernetClient>::GetInstance()->IsActivate(context->ethernetName);
-    NETMGR_LOGI("ifActivate == [%{public}d]", context->ifActivate);
+    context->ifActivate = DelayedSingleton<EthernetClient>::GetInstance()->IsIfaceActive(context->ethernetName);
+    NETMGR_LOG_I("ifActivate == [%{public}d]", context->ifActivate);
 }
 
-void NapiEthernet::CompleteIsActivate(napi_env env, napi_status status, void *data)
+void NapiEthernet::CompleteIsIfaceActive(napi_env env, napi_status status, void *data)
 {
-    NETMGR_LOGI("CompleteIsActivate");
+    NETMGR_LOG_I("CompleteIsIfaceActive");
     EthernetAsyncContext* context = static_cast<EthernetAsyncContext *>(data);
     if (context == nullptr) {
-        NETMGR_LOGE("context == nullptr");
+        NETMGR_LOG_E("context == nullptr");
         return;
     }
     napi_value info = nullptr;
     napi_create_int32(env, context->ifActivate, &info);
     if (context->callbackRef == nullptr) {
-        if (context->ifActivate == -1) {
-            NAPI_CALL_RETURN_VOID(env, napi_reject_deferred(env, context->deferred, info));
-        } else {
-            NAPI_CALL_RETURN_VOID(env, napi_resolve_deferred(env, context->deferred, info));
-        }
+        NAPI_CALL_RETURN_VOID(env, napi_resolve_deferred(env, context->deferred, info));
     } else {
-        napi_value callbackValues[static_cast<int32_t>(JS_CALLBACK_ARGV::CALLBACK_ARGV_CNT)] = {nullptr, nullptr};
+        napi_value callbackValues[CALLBACK_ARGV_CNT] = {nullptr, nullptr};
         napi_value recv = nullptr;
         napi_value result = nullptr;
         napi_value callbackFunc = nullptr;
         napi_get_undefined(env, &recv);
         napi_get_reference_value(env, context->callbackRef, &callbackFunc);
-        if (context->ifActivate == -1) {
-            callbackValues[static_cast<int32_t>(JS_ARGV_INDEX::ARGV_INDEX_0)] = info;
-        } else {
-            callbackValues[static_cast<int32_t>(JS_ARGV_INDEX::ARGV_INDEX_1)] = info;
-        }
+        callbackValues[ARGV_INDEX_1] = info;
         napi_call_function(env, recv, callbackFunc, std::size(callbackValues), callbackValues, &result);
         napi_delete_reference(env, context->callbackRef);
     }
@@ -218,43 +217,47 @@ void NapiEthernet::CompleteIsActivate(napi_env env, napi_status status, void *da
     context = nullptr;
 }
 
-void NapiEthernet::ExecGetActivateInterfaces(napi_env env, void *data)
+void NapiEthernet::ExecGetAllActiveIfaces(napi_env env, void *data)
 {
-    NETMGR_LOGI("ExecGetActivateInterfaces");
+    NETMGR_LOG_I("ExecGetAllActiveIfaces");
     EthernetAsyncContext *context = (EthernetAsyncContext *)data;
     if (context == nullptr) {
-        NETMGR_LOGE("context == nullptr");
+        NETMGR_LOG_E("context == nullptr");
         return;
     }
-    context->ethernetNameList = DelayedSingleton<EthernetClient>::GetInstance()->GetActivateInterfaces();
+    context->ethernetNameList = DelayedSingleton<EthernetClient>::GetInstance()->GetAllActiveIfaces();
 }
 
-void NapiEthernet::CompleteGetActivateInterfaces(napi_env env, napi_status status, void *data)
+void NapiEthernet::CompleteGetAllActiveIfaces(napi_env env, napi_status status, void *data)
 {
-    NETMGR_LOGI("CompleteGetActivateInterfaces");
+    NETMGR_LOG_I("CompleteGetAllActiveIfaces");
     EthernetAsyncContext* context = static_cast<EthernetAsyncContext *>(data);
     if (context == nullptr) {
-        NETMGR_LOGE("context == nullptr");
+        NETMGR_LOG_E("context == nullptr");
         return;
     }
     // creat function return
     napi_value infoAttay = nullptr;
     napi_value info = nullptr;
-    napi_create_array_with_length(env, context->ethernetNameList.size(), &infoAttay);
-    for (size_t index = 0; index < context->ethernetNameList.size(); index++) {
-        napi_create_string_utf8(env, context->ethernetNameList[index].c_str(), NAPI_AUTO_LENGTH, &info);
-        napi_set_element(env, infoAttay, index, info);
+    if (context->ethernetNameList.size() > 0) {
+        napi_create_array_with_length(env, context->ethernetNameList.size(), &infoAttay);
+        for (size_t index = 0; index < context->ethernetNameList.size(); index++) {
+            napi_create_string_utf8(env, context->ethernetNameList[index].c_str(), NAPI_AUTO_LENGTH, &info);
+            napi_set_element(env, infoAttay, index, info);
+        }
+    } else {
+        napi_create_string_utf8(env, "", NAPI_AUTO_LENGTH, &infoAttay);
     }
     if (context->callbackRef == nullptr) {
         NAPI_CALL_RETURN_VOID(env, napi_resolve_deferred(env, context->deferred, infoAttay));
     } else {
-        napi_value callbackValues[static_cast<int32_t>(JS_CALLBACK_ARGV::CALLBACK_ARGV_CNT)] = {nullptr, nullptr};
+        napi_value callbackValues[CALLBACK_ARGV_CNT] = {nullptr, nullptr};
         napi_value recv = nullptr;
         napi_value result = nullptr;
         napi_value callbackFunc = nullptr;
         napi_get_undefined(env, &recv);
         napi_get_reference_value(env, context->callbackRef, &callbackFunc);
-        callbackValues[static_cast<int32_t>(JS_CALLBACK_ARGV::CALLBACK_ARGV_INDEX_1)] = infoAttay;
+        callbackValues[CALLBACK_ARGV_INDEX_1] = infoAttay;
         napi_call_function(env, recv, callbackFunc, std::size(callbackValues), callbackValues, &result);
         napi_delete_reference(env, context->callbackRef);
     }
@@ -265,76 +268,75 @@ void NapiEthernet::CompleteGetActivateInterfaces(napi_env env, napi_status statu
 
 napi_value NapiEthernet::SetIfaceConfig(napi_env env, napi_callback_info info)
 {
-    size_t argc = static_cast<size_t>(JS_ARGV_NUM::ARGV_NUM_4);
+    NETMGR_LOG_I("SetIfaceConfig");
+    size_t argc = ARGV_NUM_4;
     napi_value argv[] = {nullptr, nullptr, nullptr, nullptr} ;
     NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
+    NETMGR_LOG_I("SetIfaceConfig agvc = [%{public}zu]", argc);
     EthernetAsyncContext* context = std::make_unique<EthernetAsyncContext>().release();
-    NAPI_CALL(env, napi_get_value_string_utf8(env, argv[static_cast<int32_t>(JS_ARGV_INDEX::ARGV_INDEX_0)],
+    // Parse Js argv
+    NAPI_CALL(env, napi_get_value_string_utf8(env, argv[ARGV_INDEX_0],
         context->ethernetName, ETHERNET_NAME_MAX_BYTE, &(context->ethernetNameRealBytes)));
-    NAPI_CALL(env, napi_get_value_int32(env, argv[static_cast<int32_t>(JS_ARGV_INDEX::ARGV_INDEX_1)],
-        &context->ipMode));
+    NETMGR_LOG_I("SetIfaceConfig ethernetName = [%{public}s]", context->ethernetName);
+    // Parse Js object [ip]
+    NapiCommon::GetPropertyInt32(env, argv[ARGV_INDEX_2], "mode", context->ipMode);
     if (context->ipMode == IPSetMode::STATIC) {
-        NapiCommon::GetPropertyString(env, argv[static_cast<int32_t>(JS_ARGV_INDEX::ARGV_INDEX_2)], "ipAddr",
-            context->ipAddrInfo);
-        NapiCommon::GetPropertyString(env, argv[static_cast<int32_t>(JS_ARGV_INDEX::ARGV_INDEX_2)], "routeAddr",
-            context->routeAddrInfo);
-        NapiCommon::GetPropertyString(env, argv[static_cast<int32_t>(JS_ARGV_INDEX::ARGV_INDEX_2)], "gateAddr",
-            context->gateAddrInfo);
-        NapiCommon::GetPropertyString(env, argv[static_cast<int32_t>(JS_ARGV_INDEX::ARGV_INDEX_2)], "maskAddr",
-            context->maskAddrInfo);
-        NapiCommon::GetPropertyString(env, argv[static_cast<int32_t>(JS_ARGV_INDEX::ARGV_INDEX_2)], "dnsAddr0",
-            context->dns0AddrInfo);
-        NapiCommon::GetPropertyString(env, argv[static_cast<int32_t>(JS_ARGV_INDEX::ARGV_INDEX_2)], "dnsAddr1",
-            context->dns1AddrInfo);
+        NapiCommon::GetPropertyString(env, argv[ARGV_INDEX_2], "ipAddr", context->ipAddrInfo);
+        NapiCommon::GetPropertyString(env, argv[ARGV_INDEX_2], "routeAddr", context->routeAddrInfo);
+        NapiCommon::GetPropertyString(env, argv[ARGV_INDEX_2], "gateAddr", context->gateAddrInfo);
+        NapiCommon::GetPropertyString(env, argv[ARGV_INDEX_2], "maskAddr", context->maskAddrInfo);
+        NapiCommon::GetPropertyString(env, argv[ARGV_INDEX_2], "dnsAddr0", context->dns0AddrInfo);
+        NapiCommon::GetPropertyString(env, argv[ARGV_INDEX_2], "dnsAddr1", context->dns1AddrInfo);
     }
     napi_value result = nullptr;
-    if ((argc == static_cast<int32_t>(JS_ARGV_NUM::ARGV_NUM_2)) ||
-        (argc == static_cast<int32_t>(JS_ARGV_NUM::ARGV_NUM_3) && context->ipMode == IPSetMode::STATIC)) {
+    if ((argc == ARGV_NUM_2) || (argc == ARGV_NUM_3 && context->ipMode == IPSetMode::STATIC)) {
         if (context->callbackRef == nullptr) {
             NAPI_CALL(env, napi_create_promise(env, &context->deferred, &result));
         } else {
             NAPI_CALL(env, napi_get_undefined(env, &result));
         }
-    } else if ((argc == static_cast<int32_t>(JS_ARGV_NUM::ARGV_NUM_4)) ||
-        (argc == static_cast<int32_t>(JS_ARGV_NUM::ARGV_NUM_3) && context->ipMode == IPSetMode::DHCP)) {
+    } else if ((argc == ARGV_NUM_4) || (argc == ARGV_NUM_3 && context->ipMode == IPSetMode::DHCP)) {
         NAPI_CALL(env, napi_create_reference(env, argv[argc - 1], CALLBACK_REF_CNT, &context->callbackRef));
     } else {
-        NETMGR_LOGE("SetIfaceConfig  exception");
+        NETMGR_LOG_E("SetIfaceConfig  exception");
     }
+    // creat async work
     napi_value resource = nullptr;
     napi_value resourceName = nullptr;
     NAPI_CALL(env, napi_get_undefined(env, &resource));
     NAPI_CALL(env, napi_create_string_utf8(env, "SetIfaceConfig", NAPI_AUTO_LENGTH, &resourceName));
     NAPI_CALL(env, napi_create_async_work(env, resource, resourceName,
-        ExecSetIfaceConfig, CompleteSetIfaceConfig, (void *)context, &context->work));
+        ExecSetIfaceConfig,
+        CompleteSetIfaceConfig,
+        (void *)context,
+        &context->work));
     NAPI_CALL(env, napi_queue_async_work(env, context->work));
     return result;
 }
 
 napi_value NapiEthernet::GetIfaceConfig(napi_env env, napi_callback_info info)
 {
-    NETMGR_LOGI("GetIfaceConfig");
-    size_t argc = static_cast<size_t>(JS_ARGV_NUM::ARGV_NUM_2);
+    NETMGR_LOG_I("GetIfaceConfig");
+    size_t argc = ARGV_NUM_2;
     napi_value argv[] = {nullptr, nullptr} ;
     NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
-    NETMGR_LOGI("GetIfaceConfig agvc = [%{public}d]", static_cast<int>(argc));
+    NETMGR_LOG_I("GetIfaceConfig agvc = [%{public}zu]", argc);
     EthernetAsyncContext* context = std::make_unique<EthernetAsyncContext>().release();
     // Parse Js argv
-    NAPI_CALL(env, napi_get_value_string_utf8(env, argv[static_cast<int32_t>(JS_ARGV_INDEX::ARGV_INDEX_0)],
+    NAPI_CALL(env, napi_get_value_string_utf8(env, argv[ARGV_INDEX_0],
         context->ethernetName, ETHERNET_NAME_MAX_BYTE, &(context->ethernetNameRealBytes)));
-    NETMGR_LOGI("GetIfaceConfig [%{public}s]", context->ethernetName);
+    NETMGR_LOG_I("GetIfaceConfig [%{public}s]", context->ethernetName);
     napi_value result = nullptr;
-    if (argc == static_cast<int32_t>(JS_ARGV_NUM::ARGV_NUM_1)) {
+    if (argc == ARGV_NUM_1) {
         if (context->callbackRef == nullptr) {
             NAPI_CALL(env, napi_create_promise(env, &context->deferred, &result));
         } else {
             NAPI_CALL(env, napi_get_undefined(env, &result));
         }
-    } else if (argc == static_cast<int32_t>(JS_ARGV_NUM::ARGV_NUM_2)) {
-        NAPI_CALL(env, napi_create_reference(env, argv[static_cast<int32_t>(JS_ARGV_INDEX::ARGV_INDEX_1)],
-            CALLBACK_REF_CNT, &context->callbackRef));
+    } else if (argc == ARGV_NUM_2) {
+        NAPI_CALL(env, napi_create_reference(env, argv[ARGV_INDEX_1], CALLBACK_REF_CNT, &context->callbackRef));
     } else {
-        NETMGR_LOGE("GetIfaceConfig  exception");
+        NETMGR_LOG_E("GetIfaceConfig  exception");
     }
     // creat async work
     napi_value resource = nullptr;
@@ -350,73 +352,71 @@ napi_value NapiEthernet::GetIfaceConfig(napi_env env, napi_callback_info info)
     return result;
 }
 
-napi_value NapiEthernet::IsActivate(napi_env env, napi_callback_info info)
+napi_value NapiEthernet::IsIfaceActive(napi_env env, napi_callback_info info)
 {
-    NETMGR_LOGI("IsActivate");
-    size_t argc = static_cast<size_t>(JS_ARGV_NUM::ARGV_NUM_2);
+    NETMGR_LOG_I("IsIfaceActive");
+    size_t argc = ARGV_NUM_2;
     napi_value argv[] = {nullptr, nullptr} ;
     NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
-    NETMGR_LOGI("IsActivate agvc = [%{public}d]", static_cast<int>(argc));
+    NETMGR_LOG_I("IsIfaceActive agvc = [%{public}zu]", argc);
     EthernetAsyncContext* context = std::make_unique<EthernetAsyncContext>().release();
     // Parse Js argv
-    NAPI_CALL(env, napi_get_value_string_utf8(env, argv[static_cast<int32_t>(JS_ARGV_INDEX::ARGV_INDEX_0)],
+    NAPI_CALL(env, napi_get_value_string_utf8(env, argv[ARGV_INDEX_0],
         context->ethernetName, ETHERNET_NAME_MAX_BYTE, &(context->ethernetNameRealBytes)));
-    NETMGR_LOGI("IsActivate [%{public}s]", context->ethernetName);
+    NETMGR_LOG_I("IsIfaceActive [%{public}s]", context->ethernetName);
     napi_value result = nullptr;
-    if (argc == static_cast<int32_t>(JS_ARGV_NUM::ARGV_NUM_1)) {
+    if (argc == ARGV_NUM_1) {
         if (context->callbackRef == nullptr) {
             NAPI_CALL(env, napi_create_promise(env, &context->deferred, &result));
         } else {
             NAPI_CALL(env, napi_get_undefined(env, &result));
         }
-    } else if (argc == static_cast<int32_t>(JS_ARGV_NUM::ARGV_NUM_2)) {
-        NAPI_CALL(env, napi_create_reference(env, argv[static_cast<int32_t>(JS_ARGV_INDEX::ARGV_INDEX_1)],
-            CALLBACK_REF_CNT, &context->callbackRef));
+    } else if (argc == ARGV_NUM_2) {
+        NAPI_CALL(env, napi_create_reference(env, argv[ARGV_INDEX_1], CALLBACK_REF_CNT, &context->callbackRef));
     } else {
-        NETMGR_LOGE("IsActivate  exception");
+        NETMGR_LOG_E("IsIfaceActive  exception");
     }
     // creat async work
     napi_value resource = nullptr;
     napi_value resourceName = nullptr;
     NAPI_CALL(env, napi_get_undefined(env, &resource));
-    NAPI_CALL(env, napi_create_string_utf8(env, "IsActivate", NAPI_AUTO_LENGTH, &resourceName));
+    NAPI_CALL(env, napi_create_string_utf8(env, "IsIfaceActive", NAPI_AUTO_LENGTH, &resourceName));
     NAPI_CALL(env, napi_create_async_work(env, resource, resourceName,
-        ExecIsActivate,
-        CompleteIsActivate,
+        ExecIsIfaceActive,
+        CompleteIsIfaceActive,
         (void *)context,
         &context->work));
     NAPI_CALL(env, napi_queue_async_work(env, context->work));
     return result;
 }
 
-napi_value NapiEthernet::GetActivateInterfaces(napi_env env, napi_callback_info info)
+napi_value NapiEthernet::GetAllActiveIfaces(napi_env env, napi_callback_info info)
 {
-    size_t argc = static_cast<size_t>(JS_ARGV_NUM::ARGV_NUM_1);
+    size_t argc = ARGV_NUM_1;
     napi_value argv[] = {nullptr} ;
     NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
-    NETMGR_LOGI("GetActivateInterfaces agvc = [%{public}d]", static_cast<int>(argc));
+    NETMGR_LOG_I("GetAllActiveIfaces agvc = [%{public}zu]", argc);
     EthernetAsyncContext* context = std::make_unique<EthernetAsyncContext>().release();
     napi_value result = nullptr;
-    if (argc == static_cast<int32_t>(JS_ARGV_NUM::ARGV_NUM_0)) {
+    if (argc == ARGV_NUM_0) {
         if (context->callbackRef == nullptr) {
             NAPI_CALL(env, napi_create_promise(env, &context->deferred, &result));
         } else {
             NAPI_CALL(env, napi_get_undefined(env, &result));
         }
-    } else if (argc == static_cast<int32_t>(JS_ARGV_NUM::ARGV_NUM_1)) {
-        NAPI_CALL(env, napi_create_reference(env, argv[static_cast<int32_t>(JS_ARGV_INDEX::ARGV_INDEX_0)],
-            CALLBACK_REF_CNT, &context->callbackRef));
+    } else if (argc == ARGV_NUM_1) {
+        NAPI_CALL(env, napi_create_reference(env, argv[ARGV_INDEX_0], CALLBACK_REF_CNT, &context->callbackRef));
     } else {
-        NETMGR_LOGE("GetActivateInterfaces  exception");
+        NETMGR_LOG_E("GetAllActiveIfaces  exception");
     }
     // creat async work
     napi_value resource = nullptr;
     napi_value resourceName = nullptr;
     NAPI_CALL(env, napi_get_undefined(env, &resource));
-    NAPI_CALL(env, napi_create_string_utf8(env, "GetActivateInterfaces", NAPI_AUTO_LENGTH, &resourceName));
+    NAPI_CALL(env, napi_create_string_utf8(env, "GetAllActiveIfaces", NAPI_AUTO_LENGTH, &resourceName));
     NAPI_CALL(env, napi_create_async_work(env, resource, resourceName,
-        ExecGetActivateInterfaces,
-        CompleteGetActivateInterfaces,
+        ExecGetAllActiveIfaces,
+        CompleteGetAllActiveIfaces,
         (void *)context,
         &context->work));
     NAPI_CALL(env, napi_queue_async_work(env, context->work));
@@ -440,8 +440,8 @@ napi_value NapiEthernet::DeclareEthernetInterface(napi_env env, napi_value expor
     napi_property_descriptor desc[] = {
         DECLARE_NAPI_FUNCTION("setIfaceConfig", SetIfaceConfig),
         DECLARE_NAPI_FUNCTION("getIfaceConfig", GetIfaceConfig),
-        DECLARE_NAPI_FUNCTION("isActivate", IsActivate),
-        DECLARE_NAPI_FUNCTION("getActivateInterfaces", GetActivateInterfaces),
+        DECLARE_NAPI_FUNCTION("isIfaceActive", IsIfaceActive),
+        DECLARE_NAPI_FUNCTION("getAllActiveIfaces", GetAllActiveIfaces),
     };
     NAPI_CALL(env, napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc));
     return exports;

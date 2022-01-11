@@ -26,8 +26,7 @@ ohos_shared_library("ethernet") {
     "$NETMANAGER_BASE_ROOT/utils/log/include",
     "$ETHERNETMANAGER_SOURCE_DIR/include",
     "$ETHERNETMANAGER_SOURCE_DIR/include/ipc",
-    "$INNERKITS_ROOT/native/ethernetmanager/include",
-    "//foundation/communication/netmanager_standard/interfaces/innerkits/native/ethernetmanager/include",
+    "$INNERKITS_ROOT/ethernetclient/include",
     "//foundation/communication/wifi/services/wifi_standard/wifi_framework/dhcp_manage/mgr_service/include",
     "//foundation/communication/wifi/services/wifi_standard/wifi_framework/dhcp_manage/mgr_service/interfaces",
   ]
@@ -40,8 +39,8 @@ ohos_shared_library("ethernet") {
   defines = [ "NETMGR_DEBUG" ]
 
   deps = [
-    "$INNERKITS_ROOT/native/ethernetmanager:ethernet_manager_if",
-    "$INNERKITS_ROOT/native/netconnmanager:net_conn_manager_if",
+    "$INNERKITS_ROOT/ethernetclient:ethernet_manager_if",
+    "$INNERKITS_ROOT/netconnclient:net_conn_manager_if",
     "$NETMANAGER_PREBUILTS_DIR/librarys/netd:libnet_manager_native",
     "//foundation/aafwk/standard/frameworks/kits/ability/native:abilitykit_native",
     "//foundation/ace/napi/:ace_napi",
@@ -56,7 +55,7 @@ ohos_shared_library("ethernet") {
     "samgr_standard:samgr_proxy",
   ]
 
-  relative_install_dir = "module"
+  relative_install_dir = "module/netmanager"
   part_name = "netmanager_standard"
   subsystem_name = "communication"
 }

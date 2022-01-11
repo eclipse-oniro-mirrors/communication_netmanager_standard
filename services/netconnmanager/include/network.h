@@ -16,53 +16,60 @@
 #ifndef NETWORK_H
 #define NETWORK_H
 
+#include "i_net_detection_callback.h"
 #include "inet_addr.h"
+#include "net_conn_types.h"
 #include "net_link_info.h"
-#include "net_supplier.h"
+#include "net_monitor.h"
 #include "route.h"
 
 namespace OHOS {
 namespace NetManagerStandard {
+constexpr uint32_t INVALID_NET_ID = 0;
+constexpr int32_t MIN_NET_ID = 100;
+constexpr int32_t MAX_NET_ID = 0xFFFF - 0x400;
+using NetDetectionHandler = std::function<void(uint32_t supplierId, bool ifValid)>;
 class Network : public virtual RefBase {
 public:
-    Network(sptr<NetSupplier> &supplier);
+    Network(int32_t netId, uint32_t supplierId, NetDetectionHandler handler);
     ~Network();
     bool operator==(const Network &network) const;
-
-    bool NetworkConnect(const NetCapabilities &netCapability);
-    bool NetworkDisconnect(const NetCapabilities &netCapability);
-    bool UpdateNetLinkInfo(const NetLinkInfo &netLinkInfo);
-    void SetIpAdress(const INetAddr &ipAdress);
-    void SetDns(const INetAddr &dns);
-    void SetRoute(const Route &route);
-    INetAddr GetIpAdress() const;
-    INetAddr GetDns() const;
-    Route GetRoute() const;
-    NetLinkInfo GetNetLinkInfo() const;
     int32_t GetNetId() const;
-    sptr<NetSupplier> GetNetSupplier() const;
-    bool UpdateNetSupplierInfo(const NetSupplierInfo &netSupplierInfo);
-    bool IsNetworkConnecting() const;
-    void SetConnected(bool connected);
-    void SetConnecting(bool connecting);
+    bool UpdateBasicNetwork(bool isAvailable_);
+    bool UpdateNetLinkInfo(const NetLinkInfo &netLinkInfo);
+    NetLinkInfo GetNetLinkInfo() const;
     void UpdateInterfaces(const NetLinkInfo &netLinkInfo);
     void UpdateRoutes(const NetLinkInfo &netLinkInfo);
     void UpdateDnses(const NetLinkInfo &netLinkInfo);
-    void updateMtu(const NetLinkInfo &netLinkInfo);
+    void UpdateMtu(const NetLinkInfo &netLinkInfo);
+    void RegisterNetDetectionCallback(const sptr<INetDetectionCallback> &callback);
+    int32_t UnRegisterNetDetectionCallback(const sptr<INetDetectionCallback> &callback);
+    void StartNetDetection();
+    uint64_t GetNetWorkMonitorResult();
+    void SetDefaultNetWork();
+    void ClearDefaultNetWorkNetId();
+    void SetExternDetection();
 
 private:
+    void StopNetDetection();
+    bool CreateBasicNetwork();
+    bool ReleaseBasicNetwork();
+    void StartDetectionThread();
+    void HandleNetMonitorResult(NetDetectionStatus netDetectionState, const std::string &urlRedirect);
+    void NotifyNetDetectionResult(NetDetectionResultCode detectionResult, const std::string &urlRedirect);
+    NetDetectionResultCode NetDetectionResultConvert(int32_t internalRet);
+
+private:
+    int32_t netId_ = 0;
+    uint32_t supplierId_ = 0;
     NetLinkInfo netLinkInfo_;
-    INetAddr ipAddr_;
-    INetAddr dns_;
-    Route route_;
-
-    // netd network param
     bool isPhyNetCreated_ = false;
-    bool isConnecting_ = false;
-    bool isConnected_ = false;
-
-    sptr<NetSupplier> supplier_;
-    int32_t netId_;
+    std::unique_ptr<NetMonitor> netMonitor_ = nullptr;
+    NetDetectionHandler  netCallback_;
+    NetDetectionStatus netDetectionState_;
+    std::string urlRedirect_;
+    std::vector<sptr<INetDetectionCallback>> netDetectionRetCallback_;
+    bool isExternDetection_ = false;
 };
 } // namespace NetManagerStandard
 } // namespace OHOS

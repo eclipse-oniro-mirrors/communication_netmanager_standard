@@ -17,8 +17,12 @@ ohos_sa_profile("net_manager_profile") {
   sources = [
     "1151.xml",
     "1152.xml",
+    "1153.xml",
+    "1154.xml",
+    "1155.xml",
     "1156.xml",
     "1157.xml",
+    "1158.xml",
   ]
 
   part_name = "netmanager_standard"

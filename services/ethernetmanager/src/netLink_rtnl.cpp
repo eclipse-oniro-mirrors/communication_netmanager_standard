@@ -35,11 +35,11 @@ void NetLinkRtnl::NetLinkListenerThead()
     int32_t netLinkSocket = 0;
     netLinkSocket = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
     if (netLinkSocket < 0) {
-        NETMGR_LOGE("NetLinkRtnl NetLinkListenerThead netLinkSocket create socket failed");
+        NETMGR_LOG_E("NetLinkRtnl NetLinkListenerThead netLinkSocket create socket failed");
         return;
     }
     if (setsockopt(netLinkSocket, SOL_SOCKET, SO_RCVBUF, &NLK_SOCK_BUF_LEN, sizeof(NLK_SOCK_BUF_LEN)) != 0) {
-        NETMGR_LOGE("NetLinkRtnl NetLinkListenerThead setsockopt failed");
+        NETMGR_LOG_E("NetLinkRtnl NetLinkListenerThead setsockopt failed");
         return;
     }
     struct sockaddr_nl sa;
@@ -47,14 +47,14 @@ void NetLinkRtnl::NetLinkListenerThead()
     sa.nl_family = AF_NETLINK;
     sa.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE | RTMGRP_IPV6_IFADDR | RTMGRP_IPV6_ROUTE;
     if (bind(netLinkSocket, (struct sockaddr *) &sa, sizeof(sa)) != 0) {
-        NETMGR_LOGE("NetLinkRtnl NetLinkListenerThead bind failed");
+        NETMGR_LOG_E("NetLinkRtnl NetLinkListenerThead bind failed");
         return;
     }
     fd_set rdSet;
     struct timeval timeout;
     timeout.tv_sec = NLK_TV_SEC;
     timeout.tv_usec = NLK_TV_USEC;
-    NETMGR_LOGI("NetLinkRtnl NetLinkListenerThead init suc, create netLinkSocket[%{public}d]", netLinkSocket);
+    NETMGR_LOG_D("NetLinkRtnl NetLinkListenerThead init suc, create netLinkSocket[%{public}d]", netLinkSocket);
     while (true) {
         FD_ZERO(&rdSet);
         FD_SET(netLinkSocket, &rdSet);
@@ -64,7 +64,7 @@ void NetLinkRtnl::NetLinkListenerThead()
 
 void NetLinkRtnl::Init()
 {
-    NETMGR_LOGI("NetLinkRtnl Init thread start");
+    NETMGR_LOG_D("NetLinkRtnl Init thread start");
     std::thread nlk(&NetLinkRtnl::NetLinkListenerThead, this);
     nlk.detach();
     return;
@@ -73,19 +73,18 @@ void NetLinkRtnl::Init()
 void NetLinkRtnl::RegisterHandle(sptr<NlkEventHandle> h)
 {
     nlkHandles_.push_back(h);
-    NETMGR_LOGI("NetLinkRtnl RegisterHandle nlkHandles_ size[%{public}d]", nlkHandles_.size());
+    NETMGR_LOG_D("NetLinkRtnl RegisterHandle nlkHandles_ size[%{public}zd]", nlkHandles_.size());
 }
 
 void NetLinkRtnl::ProcessIfInfoMsg(const struct nlmsghdr &nh)
 {
-    NETMGR_LOGI("NetLinkRtnl ProcessIfInfoMsg process");
+    NETMGR_LOG_D("NetLinkRtnl ProcessIfInfoMsg process");
     int32_t len = 0;
     struct rtattr *tb[IFLA_MAX + 1];
-    struct ifinfomsg *ifInfo = nullptr;
     bzero(tb, sizeof(tb));
-    ifInfo = reinterpret_cast<struct ifinfomsg*>(NLMSG_DATA(&nh));
+    struct ifinfomsg *ifInfo = reinterpret_cast<struct ifinfomsg*>(NLMSG_DATA(&nh));
     if (ifInfo->ifi_type != ARPHRD_ETHER) {
-        NETMGR_LOGE("NetLinkRtnl ProcessIfInfoMsg ifi_type is not ARPHRD_ETHER");
+        NETMGR_LOG_E("NetLinkRtnl ProcessIfInfoMsg ifi_type is not ARPHRD_ETHER");
         return;
     }
     len = nh.nlmsg_len - NLMSG_SPACE(sizeof(*ifInfo));
@@ -116,7 +115,7 @@ void NetLinkRtnl::ProcessLinkEventMsg(std::unique_ptr<int8_t> &pBuff, int32_t le
         if (!nh) {
             break;
         }
-        NETMGR_LOGI("NetLinkRtnl ProcessLinkEventMsg nh nlmsg_type[%{public}d]", nh->nlmsg_type);
+        NETMGR_LOG_D("NetLinkRtnl ProcessLinkEventMsg nh nlmsg_type[%{public}d]", nh->nlmsg_type);
         switch (nh->nlmsg_type) {
             case RTM_NEWLINK:
             case RTM_DELLINK:
@@ -132,7 +131,7 @@ int NetLinkRtnl::NetLinkHandle(int32_t netLinkSocket, fd_set& rdSet, struct time
 {
     int32_t selectFd = select(netLinkSocket + 1, &rdSet, nullptr, nullptr, &timeout);
     if (selectFd < 0) {
-        NETMGR_LOGE("NetLinkRtnl NetLinkHandle select failed");
+        NETMGR_LOG_E("NetLinkRtnl NetLinkHandle select failed");
         return ETHERNET_ERROR;
     } else if (selectFd > 0) {
         if (FD_ISSET(netLinkSocket, &rdSet)) {
@@ -146,33 +145,6 @@ int NetLinkRtnl::NetLinkHandle(int32_t netLinkSocket, fd_set& rdSet, struct time
     return ETHERNET_SUCCESS;
 }
 
-int32_t NetLinkRtnl::SetIpAddr(const std::string &ifName, const std::string &ip)
-{
-    int32_t fd = 0;
-    struct ifreq ifr;
-    fd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (-1 == fd) {
-        return ETHERNET_ERROR;
-    }
-    strcpy_s(ifr.ifr_name, sizeof(ifr.ifr_name), ifName.c_str());
-    if (ioctl(fd, SIOCGIFFLAGS, &ifr) < 0) {
-        close(fd);
-        return ETHERNET_ERROR;
-    }
-    struct sockaddr_in *sin_net_ip = nullptr;
-    bzero(&ifr, sizeof(ifr));
-    strncpy_s(ifr.ifr_name, sizeof(ifr.ifr_name), ifName.c_str(), sizeof(ifr.ifr_name)-1);
-    sin_net_ip = reinterpret_cast<struct sockaddr_in*>(&ifr.ifr_addr);
-    sin_net_ip->sin_family = AF_INET;
-    inet_pton(AF_INET, ip.c_str(), &sin_net_ip->sin_addr);
-    if (ioctl(fd, SIOCSIFADDR, &ifr) < 0) {
-        close(fd);
-        return ETHERNET_ERROR;
-    }
-    close(fd);
-    return ETHERNET_SUCCESS;
-}
-
 std::vector<uint8_t> NetLinkRtnl::GetHWaddr(const std::string &devName)
 {
     int32_t sock = 0;
@@ -182,12 +154,12 @@ std::vector<uint8_t> NetLinkRtnl::GetHWaddr(const std::string &devName)
     std::vector<uint8_t> hwAddr;
     sock=socket(AF_INET, SOCK_DGRAM, 0);
     if (sock < 0) {
-        NETMGR_LOGE("NetLinkRtnl GetHWaddr create socket error sock[%{public}d]", sock);
+        NETMGR_LOG_E("NetLinkRtnl GetHWaddr create socket error sock[%{public}d]", sock);
         return hwAddr;
     }
     strcpy_s(ifr.ifr_name, sizeof(ifr.ifr_name), devName.c_str());
     if (ioctl(sock, SIOCGIFHWADDR, &ifr) < 0) {
-        NETMGR_LOGE("NetLinkRtnl GetHWaddr ioctl SIOCGIFHWADDR error");
+        NETMGR_LOG_E("NetLinkRtnl GetHWaddr ioctl SIOCGIFHWADDR error");
         close(sock);
         return hwAddr;
     }
@@ -214,19 +186,19 @@ void NetLinkRtnl::GetLinkInfo(std::vector<NlkEventInfo> &infos)
     };
     int32_t fd = CreateNetLinkSocket();
     if (fd < 0) {
-        NETMGR_LOGE("NetLinkRtnl GetLinkInfo CreateNetLinkSocket failed");
+        NETMGR_LOG_E("NetLinkRtnl GetLinkInfo CreateNetLinkSocket failed");
         return;
     }
     int32_t ret = NetLinkSendMsg(fd, req.nlh);
     if (ret < 0) {
-        NETMGR_LOGE("NetLinkRtnl GetLinkInfo NetLinkSendMsg failed");
+        NETMGR_LOG_E("NetLinkRtnl GetLinkInfo NetLinkSendMsg failed");
         return;
     }
     int8_t buff[NLK_SOCK_BUF_LEN];
     bzero(buff, sizeof(buff));
     ret = read(fd, buff, sizeof(buff));
     if (ret < 0) {
-        NETMGR_LOGE("read failed");
+        NETMGR_LOG_E("read failed");
     }
     std::unique_ptr<int8_t> pBuff(buff);
     ProcessReadMsg(pBuff, ret, infos);
@@ -236,14 +208,14 @@ void NetLinkRtnl::ProcessReadMsg(std::unique_ptr<int8_t> &pBuff, int32_t len, st
 {
     struct nlmsghdr *nh = nullptr;
     if (pBuff == nullptr) {
-            return;
+        return;
     }
     for (nh = reinterpret_cast<struct nlmsghdr*>(pBuff.release()); NLMSG_OK(nh, len);
         nh = NLMSG_NEXT(nh, len)) {
         if (!nh) {
             break;
         }
-        NETMGR_LOGI("NetLinkRtnl ProcessReadMsg nh nlmsg_type[%{public}d]", nh->nlmsg_type);
+        NETMGR_LOG_D("NetLinkRtnl ProcessReadMsg nh nlmsg_type[%{public}d]", nh->nlmsg_type);
         switch (nh->nlmsg_type) {
             case RTM_NEWLINK:
             case RTM_DELLINK:
@@ -257,15 +229,14 @@ void NetLinkRtnl::ProcessReadMsg(std::unique_ptr<int8_t> &pBuff, int32_t len, st
 
 NlkEventInfo NetLinkRtnl::ProcessLinkMsg(const struct nlmsghdr &nh)
 {
-    NETMGR_LOGI("NetLinkRtnl ProcessIfInfoMsg process");
+    NETMGR_LOG_D("NetLinkRtnl ProcessIfInfoMsg process");
     int32_t len = 0;
     struct rtattr *tb[IFLA_MAX + 1];
-    struct ifinfomsg *ifInfo = nullptr;
     bzero(tb, sizeof(tb));
     NlkEventInfo info;
-    ifInfo = reinterpret_cast<struct ifinfomsg *>(NLMSG_DATA(&nh));
+    struct ifinfomsg *ifInfo = reinterpret_cast<struct ifinfomsg *>(NLMSG_DATA(&nh));
     if (ifInfo->ifi_type != ARPHRD_ETHER) {
-        NETMGR_LOGE("NetLinkRtnl ProcessLinkMsg ifi_type is not ARPHRD_ETHER");
+        NETMGR_LOG_E("NetLinkRtnl ProcessLinkMsg ifi_type is not ARPHRD_ETHER");
         return info;
     }
     len = nh.nlmsg_len - NLMSG_SPACE(sizeof(*ifInfo));
@@ -286,15 +257,14 @@ int32_t NetLinkRtnl::CreateNetLinkSocket()
 {
     socklen_t addr_len = 0;
     struct sockaddr_nl snl;
-    int32_t fd = -1;
-    fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
+    int32_t fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
     if (fd < 0) {
-            NETMGR_LOGE("NetLinkRtnl CreateNetLinkSocket create socket error");
-            return ETHERNET_ERROR;
+        NETMGR_LOG_E("NetLinkRtnl CreateNetLinkSocket create socket error");
+        return ETHERNET_ERROR;
     }
     int32_t ret = fcntl(fd, F_SETFL, O_NONBLOCK);
     if (ret < 0) {
-        NETMGR_LOGE("NetLinkRtnl CreateNetLinkSocket fcntl error");
+        NETMGR_LOG_E("NetLinkRtnl CreateNetLinkSocket fcntl error");
         close(fd);
         return ETHERNET_ERROR;
     }
@@ -303,19 +273,19 @@ int32_t NetLinkRtnl::CreateNetLinkSocket()
     snl.nl_groups = 0;
     ret = bind(fd, reinterpret_cast<struct sockaddr*>(&snl), sizeof(snl));
     if (ret < 0) {
-        NETMGR_LOGE("NetLinkRtnl CreateNetLinkSocket bind error");
+        NETMGR_LOG_E("NetLinkRtnl CreateNetLinkSocket bind error");
         close(fd);
         return ETHERNET_ERROR;
     }
     addr_len = sizeof (snl);
     ret = getsockname(fd, reinterpret_cast<struct sockaddr*>(&snl), &addr_len);
     if (ret < 0 || addr_len != sizeof (snl)) {
-        NETMGR_LOGE("NetLinkRtnl CreateNetLinkSocket getsockname error");
+        NETMGR_LOG_E("NetLinkRtnl CreateNetLinkSocket getsockname error");
         close(fd);
         return ETHERNET_ERROR;
     }
     if (snl.nl_family != AF_NETLINK) {
-        NETMGR_LOGE("NetLinkRtnl CreateNetLinkSocket nl_family error");
+        NETMGR_LOG_E("NetLinkRtnl CreateNetLinkSocket nl_family error");
         close(fd);
         return ETHERNET_ERROR;
     }

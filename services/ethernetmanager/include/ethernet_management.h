@@ -18,10 +18,12 @@
 
 #include <map>
 #include <mutex>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <arpa/inet.h>
 
+#include "netd_controller_callback.h"
 #include "iservice_registry.h"
-#include "i_dhcp_result_notify.h"
-#include "dhcp_service.h"
 #include "system_ability_definition.h"
 
 #include "dev_interface_state.h"
@@ -30,39 +32,59 @@
 
 namespace OHOS {
 namespace NetManagerStandard {
-constexpr int32_t DHCP_TIMEOUT = 60;
 class EthernetManagement : public NlkEventHandle {
-public:
-    class EthDhcpResultNotify : public OHOS::Wifi::IDhcpResultNotify {
+    class NotifyCallback : public NetdControllerCallback {
     public:
-        explicit EthDhcpResultNotify(EthernetManagement &ethernetManagement);
-        ~EthDhcpResultNotify() override;
-        void OnSuccess(int status, const std::string &ifname, OHOS::Wifi::DhcpResult &result) override;
-        void OnFailed(int status, const std::string &ifname, const std::string &reason) override;
-        void OnSerExitNotify(const std::string& ifname) override;
-
+        NotifyCallback(EthernetManagement &ethernetManagement);
+        ~NotifyCallback() override;
+        int32_t OnInterfaceAddressUpdated(const std::string &, const std::string &, int, int) override;
+        int32_t OnInterfaceAddressRemoved(const std::string &, const std::string &, int, int) override;
+        int32_t OnInterfaceAdded(const std::string &) override;
+        int32_t OnInterfaceRemoved(const std::string &) override;
+        int32_t OnInterfaceChanged(const std::string &, bool) override;
+        int32_t OnInterfaceLinkStateChanged(const std::string &, bool) override;
+        int32_t OnRouteChanged(bool, const std::string &, const std::string &, const std::string &) override;
+        int32_t OnDhcpSuccess(NetdControllerCallback::DhcpResult &dhcpResult) override;
     private:
         EthernetManagement &ethernetManagement_;
     };
-
 public:
     EthernetManagement();
     ~EthernetManagement();
     void Init();
     void UpdateInterfaceState(const std::string &dev, bool up, bool lowerUp);
     int32_t UpdateDevInterfaceState(const std::string &iface, sptr<InterfaceConfiguration> cfg);
-    int32_t UpdateDevInterfaceLinkInfo(const std::string &iface, const OHOS::Wifi::DhcpResult &result);
+    int32_t UpdateDevInterfaceLinkInfo(NetdControllerCallback::DhcpResult &dhcpResult);
     sptr<InterfaceConfiguration> GetDevInterfaceCfg(const std::string &iface);
-    int32_t IsActivate(const std::string &iface);
-    std::vector<std::string> GetActivateInterfaces();
+    int32_t IsIfaceActive(const std::string &iface);
+    std::vector<std::string> GetAllActiveIfaces();
+    int32_t ResetFactory();
     void RegisterNlk(NetLinkRtnl &nlk);
     void Handle(const struct NlkEventInfo &info) override;
 
 private:
-    sptr<INetConnService> netConnService_ = nullptr;
+    bool IsDirExist(const std::string &dirPath);
+    bool CreateDir(const std::string &dirPath);
+    bool DelDir(const std::string &dirPath);
+    bool IsFileExist(const std::string &filePath);
+    bool ReadFile(const std::string &filePath, std::string &fileContent);
+    bool WriteFile(const std::string &filePath, const std::string &fileContent);
+    void ReadFileList(const std::string &dirPath, std::map<std::string, sptr<InterfaceConfiguration>> &devCfgs);
+    void ParserFileConfig(const std::string &fileContent, std::string &iface, sptr<InterfaceConfiguration> cfg);
+    void GenCfgContent(const std::string &iface, sptr<InterfaceConfiguration> cfg, std::string &fileContent);
+    bool IsValidIPV4(const std::string &ip);
+    bool IsValidIPV6(const std::string &ip);
+    int8_t GetAddrFamily(const std::string &ip);
+    int32_t Ipv4PrefixLen(const std::string &ip);
+    void StartDhcpClient(const std::string &dev, sptr<DevInterfaceState> &devState);
+    void StopDhcpClient(const std::string &dev, sptr<DevInterfaceState> &devState);
+    void SetDevState(sptr<DevInterfaceState> &devState, const std::string &devName,
+        const std::vector<uint8_t> &hwAddr, bool up, bool lowerUp);
+
+private:
+    sptr<NotifyCallback> notifyCallback_ = nullptr;
     std::map<std::string, sptr<DevInterfaceState>> devs_;
-    std::unique_ptr<OHOS::Wifi::IDhcpService> dhcpService_ = nullptr;
-    std::unique_ptr<EthDhcpResultNotify> dhcpResultNotify_ = nullptr;
+    std::string configDir_ = "/data/ethernet/";
     std::mutex mutex_;
 };
 } // namespace NetManagerStandard

@@ -14,79 +14,25 @@
  */
 
 #include "network.h"
-
-#include "net_id_manager.h"
 #include "netd_controller.h"
 #include "net_mgr_log_wrapper.h"
 
 namespace OHOS {
 namespace NetManagerStandard {
-Network::Network(sptr<NetSupplier> &supplier) : supplier_(supplier)
+Network::Network(int32_t netId, uint32_t supplierId, NetDetectionHandler handler)
+    : netId_(netId), supplierId_(supplierId), netCallback_(handler)
 {
-    netId_ = DelayedSingleton<NetIdManager>::GetInstance()->ReserveNetId();
-    NetdController::GetInstance()->CreateNetworkCache(netId_);
+    StartDetectionThread();
 }
 
 Network::~Network()
 {
-    NetdController::GetInstance()->DestoryNetworkCache(netId_);
-}
-
-bool Network::operator==(const Network &network) const
-{
-    return (supplier_ != nullptr && network.supplier_ != nullptr) &&
-        *supplier_ == *(network.supplier_) &&
-        netId_ == network.netId_;
-}
-
-bool Network::NetworkConnect(const NetCapabilities &netCapability)
-{
-    NETMGR_LOGI("supplier is connecting");
-    if (isConnected_) {
-        NETMGR_LOGI("supplier is connected");
-        return true;
+    if (!ReleaseBasicNetwork()) {
+        NETMGR_LOG_E("ReleaseBasicNetwork fail.");
     }
-
-    // Call NetSupplier class to activate the network
-    NETMGR_LOGI("SupplierDisconnection processing");
-    bool ret = supplier_->SupplierDisconnection(netCapability);
-    if (!ret) {
-        NETMGR_LOGE("connect failed");
-        return ret;
+    if (netMonitor_ != nullptr) {
+        netMonitor_->StopNetMonitorThread();
     }
-
-    isConnecting_ = true;
-    isConnected_ = true;
-    return ret;
-}
-
-bool Network::NetworkDisconnect(const NetCapabilities &netCapability)
-{
-    NETMGR_LOGI("supplier is disConnecting");
-    if (!isConnecting_ && !isConnected_) {
-        NETMGR_LOGI("no connecting or connected");
-        return false;
-    }
-
-    // Call NetSupplier class to deactivate the network
-    NETMGR_LOGI("SupplierDisconnection processing");
-    bool ret = supplier_->SupplierDisconnection(netCapability);
-    if (!ret) {
-        NETMGR_LOGE("disconnect failed");
-    }
-
-    return ret;
-}
-
-bool Network::UpdateNetLinkInfo(const NetLinkInfo &netLinkInfo)
-{
-    NETMGR_LOGI("update net link information process");
-    UpdateInterfaces(netLinkInfo);
-    UpdateRoutes(netLinkInfo);
-    UpdateDnses(netLinkInfo);
-    updateMtu(netLinkInfo);
-    netLinkInfo_ = netLinkInfo;
-    return true;
 }
 
 int32_t Network::GetNetId() const
@@ -94,73 +40,63 @@ int32_t Network::GetNetId() const
     return netId_;
 }
 
-void Network::SetIpAdress(const INetAddr &ipAdress)
+bool Network::operator==(const Network &network) const
 {
-    ipAddr_ = ipAdress;
+    return netId_ == network.netId_;
 }
 
-void Network::SetDns(const INetAddr &dns)
+bool Network::UpdateBasicNetwork(bool isAvailable_)
 {
-    dns_ = dns;
+    NETMGR_LOG_D("Enter UpdateBasicNetwork");
+    if (isAvailable_) {
+        return CreateBasicNetwork();
+    } else {
+        return ReleaseBasicNetwork();
+    }
 }
 
-void Network::SetRoute(const Route &route)
+bool Network::CreateBasicNetwork()
 {
-    route_ = route;
-}
-
-NetLinkInfo Network::GetNetLinkInfo() const
-{
-    return netLinkInfo_;
-}
-
-INetAddr Network::GetIpAdress() const
-{
-    return ipAddr_;
-}
-
-INetAddr Network::GetDns() const
-{
-    return dns_;
-}
-
-Route Network::GetRoute() const
-{
-    return route_;
-}
-
-sptr<NetSupplier> Network::GetNetSupplier() const
-{
-    return supplier_;
-}
-
-bool Network::UpdateNetSupplierInfo(const NetSupplierInfo &netSupplierInfo)
-{
-    NETMGR_LOGI("process strart");
-    supplier_->UpdateNetSupplierInfo(netSupplierInfo);
-
+    NETMGR_LOG_D("Enter CreateBasicNetwork");
     if (!isPhyNetCreated_) {
-        std::string permission;
+        NETMGR_LOG_D("Create physical network");
         // Create a physical network
-        NetdController::GetInstance()->NetworkCreatePhysical(netId_, 0);
+        NetdController::GetInstance().NetworkCreatePhysical(netId_, 0);
+        NetdController::GetInstance().CreateNetworkCache(netId_);
         isPhyNetCreated_ = true;
     }
     return true;
 }
 
-bool Network::IsNetworkConnecting() const
+bool Network::ReleaseBasicNetwork()
 {
-    return isConnecting_;
+    NETMGR_LOG_D("Enter ReleaseBasicNetwork");
+    if (isPhyNetCreated_) {
+        NETMGR_LOG_D("Destroy physical network");
+        StopNetDetection();
+        NetdController::GetInstance().NetworkRemoveInterface(netId_, netLinkInfo_.ifaceName_);
+        NetdController::GetInstance().NetworkDestroy(netId_);
+        NetdController::GetInstance().DestoryNetworkCache(netId_);
+        isPhyNetCreated_ = false;
+    }
+    return true;
 }
 
-void Network::SetConnected(bool connected)
+bool Network::UpdateNetLinkInfo(const NetLinkInfo &netLinkInfo)
 {
-    isConnected_ = connected;
+    NETMGR_LOG_D("update net link information process");
+    UpdateInterfaces(netLinkInfo);
+    UpdateRoutes(netLinkInfo);
+    UpdateDnses(netLinkInfo);
+    UpdateMtu(netLinkInfo);
+    netLinkInfo_ = netLinkInfo;
+    StartNetDetection();
+    return true;
 }
 
-void Network::SetConnecting(bool connecting)
+NetLinkInfo Network::GetNetLinkInfo() const
 {
-    isConnecting_ = connecting;
+    return netLinkInfo_;
 }
 
 void Network::UpdateInterfaces(const NetLinkInfo &netLinkInfo)
@@ -171,11 +107,12 @@ void Network::UpdateInterfaces(const NetLinkInfo &netLinkInfo)
 
     // Call netd to add and remove interface
     if (!netLinkInfo.ifaceName_.empty()) {
-        NetdController::GetInstance()->NetworkAddInterface(netId_, netLinkInfo.ifaceName_);
+        NetdController::GetInstance().NetworkAddInterface(netId_, netLinkInfo.ifaceName_);
     }
     if (!netLinkInfo_.ifaceName_.empty()) {
-        NetdController::GetInstance()->NetworkRemoveInterface(netId_, netLinkInfo_.ifaceName_);
+        NetdController::GetInstance().NetworkRemoveInterface(netId_, netLinkInfo_.ifaceName_);
     }
+    netLinkInfo_.ifaceName_ = netLinkInfo.ifaceName_;
 }
 
 void Network::UpdateRoutes(const NetLinkInfo &netLinkInfo)
@@ -184,7 +121,7 @@ void Network::UpdateRoutes(const NetLinkInfo &netLinkInfo)
         const struct Route &route = *it;
         if (std::find(netLinkInfo_.routeList_.begin(), netLinkInfo_.routeList_.end(), *it) ==
             netLinkInfo_.routeList_.end()) {
-                NetdController::GetInstance()->NetworkAddRoute(
+                NetdController::GetInstance().NetworkAddRoute(
                     netId_, route.iface_, route.destination_.address_, route.gateway_.address_);
         }
     }
@@ -193,7 +130,7 @@ void Network::UpdateRoutes(const NetLinkInfo &netLinkInfo)
         const struct Route &route = *it;
         if (std::find(netLinkInfo.routeList_.begin(), netLinkInfo.routeList_.end(), *it) ==
             netLinkInfo.routeList_.end()) {
-                NetdController::GetInstance()->NetworkRemoveRoute(
+                NetdController::GetInstance().NetworkRemoveRoute(
                     netId_, route.iface_, route.destination_.address_, route.gateway_.address_);
         }
     }
@@ -209,16 +146,140 @@ void Network::UpdateDnses(const NetLinkInfo &netLinkInfo)
         doamains.push_back(dns.hostName_);
     }
     // Call netd to set dns
-    NetdController::GetInstance()->SetResolverConfig(netId_, 0, 1, servers, doamains);
+    NetdController::GetInstance().SetResolverConfig(netId_, 0, 1, servers, doamains);
 }
 
-void Network::updateMtu(const NetLinkInfo &netLinkInfo)
+void Network::UpdateMtu(const NetLinkInfo &netLinkInfo)
 {
     if (netLinkInfo.mtu_ == netLinkInfo_.mtu_) {
         return;
     }
 
-    NetdController::GetInstance()->InterfaceSetMtu(netLinkInfo.ifaceName_, netLinkInfo.mtu_);
+    NetdController::GetInstance().InterfaceSetMtu(netLinkInfo.ifaceName_, netLinkInfo.mtu_);
+}
+
+void Network::RegisterNetDetectionCallback(const sptr<INetDetectionCallback> &callback)
+{
+    NETMGR_LOG_D("Enter RegisterNetDetectionCallback");
+    if (callback == nullptr) {
+        NETMGR_LOG_E("The parameter callback is null");
+        return;
+    }
+
+    for (auto iter = netDetectionRetCallback_.begin(); iter != netDetectionRetCallback_.end(); ++iter) {
+        if (callback->AsObject().GetRefPtr() == (*iter)->AsObject().GetRefPtr()) {
+            NETMGR_LOG_D("netDetectionRetCallback_ had this callback");
+            return;
+        }
+    }
+
+    netDetectionRetCallback_.emplace_back(callback);
+}
+
+int32_t Network::UnRegisterNetDetectionCallback(const sptr<INetDetectionCallback> &callback)
+{
+    NETMGR_LOG_D("Enter UnRegisterNetDetectionCallback");
+    if (callback == nullptr) {
+        NETMGR_LOG_E("The parameter of callback is null");
+        return ERR_SERVICE_NULL_PTR;
+    }
+
+    for (auto iter = netDetectionRetCallback_.begin(); iter != netDetectionRetCallback_.end(); ++iter) {
+        if (callback->AsObject().GetRefPtr() == (*iter)->AsObject().GetRefPtr()) {
+            netDetectionRetCallback_.erase(iter);
+            break;
+        }
+    }
+
+    return ERR_NONE;
+}
+
+void Network::StartNetDetection()
+{
+    NETMGR_LOG_D("Enter Network::StartNetDetection");
+    if (netMonitor_ != nullptr) {
+        netMonitor_->SignalNetMonitorThread(netLinkInfo_.ifaceName_);
+    }
+}
+
+void Network::StopNetDetection()
+{
+    NETMGR_LOG_D("Enter Network::StopNetDetection");
+    if (netMonitor_ != nullptr) {
+        netMonitor_->StopNetMonitorThread();
+    }
+}
+
+void Network::SetExternDetection()
+{
+    isExternDetection_ = true;
+}
+
+void Network::StartDetectionThread()
+{
+    netDetectionState_ = INVALID_DETECTION_STATE;
+    netMonitor_ = std::make_unique<NetMonitor>(
+        std::bind(&Network::HandleNetMonitorResult, this, std::placeholders::_1, std::placeholders::_2));
+    if (netMonitor_ == nullptr) {
+        NETMGR_LOG_E("make_unique NetMonitor failed,netMonitor_ is null!");
+        return;
+    }
+    netMonitor_->InitNetMonitorThread();
+}
+
+uint64_t Network::GetNetWorkMonitorResult()
+{
+    return netDetectionState_;
+}
+
+void Network::HandleNetMonitorResult(NetDetectionStatus netDetectionState, const std::string &urlRedirect)
+{
+    bool needReport = false;
+    if (netDetectionState_ != netDetectionState || isExternDetection_) {
+        needReport = true;
+        isExternDetection_ = false;
+    }
+    if (needReport) {
+        NotifyNetDetectionResult(NetDetectionResultConvert(static_cast<int32_t>(netDetectionState)), urlRedirect);
+        if (netCallback_) {
+            netCallback_(supplierId_, netDetectionState == VERIFICATION_STATE);
+        }
+    }
+    netDetectionState_ = netDetectionState;
+    urlRedirect_ = urlRedirect;
+}
+
+void Network::NotifyNetDetectionResult(NetDetectionResultCode detectionResult, const std::string &urlRedirect)
+{
+    for (auto callback : netDetectionRetCallback_) {
+        NETMGR_LOG_D("start callback!");
+        callback->OnNetDetectionResultChanged(detectionResult, urlRedirect);
+    }
+}
+
+NetDetectionResultCode Network::NetDetectionResultConvert(int32_t internalRet)
+{
+    switch (internalRet) {
+        case static_cast<int32_t>(INVALID_DETECTION_STATE):
+            return NET_DETECTION_FAIL;
+        case static_cast<int32_t>(VERIFICATION_STATE):
+            return NET_DETECTION_SUCCESS;
+        case static_cast<int32_t>(CAPTIVE_PORTAL_STATE):
+            return NET_DETECTION_CAPTIVE_PORTAL;
+        default:
+            break;
+    }
+    return NET_DETECTION_FAIL;
+}
+
+void Network::SetDefaultNetWork()
+{
+    NetdController::GetInstance().SetDefaultNetWork(netId_);
+}
+
+void Network::ClearDefaultNetWorkNetId()
+{
+    NetdController::GetInstance().ClearDefaultNetWorkNetId();
 }
 } // namespace NetManagerStandard
 } // namespace OHOS

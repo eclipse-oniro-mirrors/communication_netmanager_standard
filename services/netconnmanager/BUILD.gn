@@ -17,31 +17,38 @@ import(
 
 ohos_shared_library("net_conn_manager") {
   sources = [
-    "$NETCONNMANAGER_COMMON_DIR/src/broadcast_manager.cpp",
-    "$NETCONNMANAGER_COMMON_DIR/src/netd_controller.cpp",
-    "$NETCONNMANAGER_SOURCE_DIR/src/ipc/net_conn_callback_proxy.cpp",
-    "$NETCONNMANAGER_SOURCE_DIR/src/ipc/net_conn_service_stub.cpp",
+    "$NETCONNMANAGER_COMMON_DIR/src/route_utils.cpp",
+    "$NETCONNMANAGER_SOURCE_DIR/src/http_request.cpp",
+    "$NETCONNMANAGER_SOURCE_DIR/src/net_activate.cpp",
     "$NETCONNMANAGER_SOURCE_DIR/src/net_conn_service.cpp",
-    "$NETCONNMANAGER_SOURCE_DIR/src/net_controller/net_controller_factory.cpp",
-    "$NETCONNMANAGER_SOURCE_DIR/src/net_controller/telephony_controller.cpp",
-    "$NETCONNMANAGER_SOURCE_DIR/src/net_id_manager.cpp",
-    "$NETCONNMANAGER_SOURCE_DIR/src/net_service.cpp",
+    "$NETCONNMANAGER_SOURCE_DIR/src/net_conn_service_iface.cpp",
+    "$NETCONNMANAGER_SOURCE_DIR/src/net_monitor.cpp",
+    "$NETCONNMANAGER_SOURCE_DIR/src/net_score.cpp",
     "$NETCONNMANAGER_SOURCE_DIR/src/net_supplier.cpp",
     "$NETCONNMANAGER_SOURCE_DIR/src/network.cpp",
+    "$NETCONNMANAGER_SOURCE_DIR/src/stub/net_conn_callback_proxy.cpp",
+    "$NETCONNMANAGER_SOURCE_DIR/src/stub/net_conn_service_stub.cpp",
+    "$NETCONNMANAGER_SOURCE_DIR/src/stub/net_detection_callback_proxy.cpp",
+    "$NETCONNMANAGER_SOURCE_DIR/src/stub/net_supplier_callback_proxy.cpp",
   ]
 
   include_dirs = [
     "$NETCONNMANAGER_SOURCE_DIR/include",
-    "$NETCONNMANAGER_SOURCE_DIR/include/ipc",
-    "$NETCONNMANAGER_SOURCE_DIR/include/net_controller",
-    "$INNERKITS_ROOT/native/netconnmanager/include",
+    "$NETCONNMANAGER_SOURCE_DIR/include/stub",
+    "$INNERKITS_ROOT/include",
+    "$INNERKITS_ROOT/netconnclient/include",
+    "$INNERKITS_ROOT/netconnclient/include/proxy",
+    "$INNERKITS_ROOT/netstatsclient/include",
     "$NETCONNMANAGER_COMMON_DIR/include",
+    "$NETDCONTROLLER_ROOT_DIR/include",
+    "//third_party/curl/include",
   ]
 
   deps = [
-    "$INNERKITS_ROOT/native/netconnmanager:net_conn_manager_if",
+    "$NETCONNMANAGER_COMMON_DIR:net_service_common",
+    "$NETDCONTROLLER_ROOT_DIR:netd_controller",
     "$NETMANAGER_BASE_ROOT/utils:net_manager_common",
-    "$NETMANAGER_PREBUILTS_DIR/librarys/netd:libnet_manager_native",
+    "//third_party/curl:curl",
     "//utils/native/base:utils",
   ]
 
@@ -49,7 +56,6 @@ ohos_shared_library("net_conn_manager") {
     "aafwk_standard:want",
     "appexecfwk_standard:libeventhandler",
     "ces_standard:cesfwk_innerkits",
-    "core_service:tel_cellular_data_api",
     "ipc:ipc_core",
     "safwk:system_ability_fwk",
     "samgr_standard:samgr_proxy",
@@ -60,10 +66,12 @@ ohos_shared_library("net_conn_manager") {
     "LOG_DOMAIN = 0xD0015B0",
   ]
 
-  defines += [ "NATIVE_NETD_FEATURE" ]
-
   if (enable_netmgr_debug) {
     defines += [ "NETMGR_DEBUG" ]
+  }
+
+  if (enable_sys_dns) {
+    defines += [ "SYS_DNS" ]
   }
 
   if (is_standard_system) {

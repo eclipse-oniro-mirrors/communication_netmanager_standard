@@ -23,33 +23,38 @@ ohos_shared_library("netpolicy") {
     "$NETMANAGER_NAPI_ROOT/netpolicy/include",
     "$NETMANAGER_NAPI_ROOT/common",
     "$NETMANAGER_BASE_ROOT/utils/log/include",
-    "$NETPOLICYMANAGER_SOURCE_DIR/include",
-    "$NETPOLICYMANAGER_SOURCE_DIR/include/ipc",
+    "$INNERKITS_ROOT/netpolicyclient/include",
+    "$INNERKITS_ROOT/netpolicyclient/include/proxy",
   ]
 
   sources = [
     "$NETMANAGER_NAPI_ROOT/common/napi_common.cpp",
     "$NETMANAGER_NAPI_ROOT/netpolicy/src/napi_net_policy.cpp",
+    "$NETMANAGER_NAPI_ROOT/netpolicy/src/napi_net_policy_observer.cpp",
+    "$NETMANAGER_NAPI_ROOT/netpolicy/src/net_policy_event_listener_handler.cpp",
+    "$NETMANAGER_NAPI_ROOT/netpolicy/src/net_policy_event_listener_manager.cpp",
   ]
 
   defines = [ "NETMGR_DEBUG" ]
 
   deps = [
-    "$INNERKITS_ROOT/native/netconnmanager:net_conn_manager_if",
-    "$INNERKITS_ROOT/native/netpolicymanager:net_policy_manager_if",
+    "$INNERKITS_ROOT/netpolicyclient:net_policy_manager_if",
     "//foundation/aafwk/standard/frameworks/kits/ability/native:abilitykit_native",
     "//foundation/ace/napi/:ace_napi",
     "//utils/native/base:utils",
   ]
 
   external_deps = [
+    "aafwk_standard:want",
+    "appexecfwk_standard:libeventhandler",
+    "ces_standard:cesfwk_innerkits",
     "hiviewdfx_hilog_native:libhilog",
     "ipc:ipc_core",
     "safwk:system_ability_fwk",
     "samgr_standard:samgr_proxy",
   ]
 
-  relative_install_dir = "module"
+  relative_install_dir = "module/netmanager"
   part_name = "netmanager_standard"
   subsystem_name = "communication"
 }

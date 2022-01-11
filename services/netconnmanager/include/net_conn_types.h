@@ -18,6 +18,8 @@
 
 namespace OHOS {
 namespace NetManagerStandard {
+constexpr int32_t MAX_IPV4_ADDRESS_LEN = 32;
+
 enum ResultCode {
     ERR_NONE                                                        = 0,
     ERR_SERVICE_REQUEST_SUCCESS                                     = (-1),
@@ -40,7 +42,34 @@ enum ResultCode {
     ERR_NET_TYPE_NOT_FOUND                                          = (-18),
     ERR_NO_ANY_NET_TYPE                                             = (-19),
     ERR_NO_REGISTERED                                               = (-20),
+    ERR_NET_HOST_EMPTY = (-21),
+    ERR_SERVICE_NO_REQUEST = (-22),
+    ERR_NO_ADDRESS = (-23),
+    ERR_NET_FIND_BESTNETWORK_FOR_REQUEST = (-24),
+    ERR_NET_NOT_FIND_BESTNETWORK_FOR_REQUEST = (-25),
+    ERR_NET_NOT_FIND_REQUEST_ID = (-26),
+    ERR_NET_NOT_FIND_NETID = (-27),
+    ERR_VPN = (-28),
+    ERR_NET_DEFAULTNET_NOT_EXIST = (-29)
 };
+
+enum NetMonitorResponseCode {
+    OK = 200,
+    CREATED = 201,
+    NO_CONTENT = 204,
+    URL_REDIRECT_MAX = 399,
+    BAD_REQUEST = 400,
+    CLIENT_ERROR_MAX = 499,
+};
+
+enum NetDetectionStatus {
+    INVALID_DETECTION_STATE,
+    VERIFICATION_STATE,
+    EVALUATING_STATE,
+    CAPTIVE_PORTAL_STATE,
+};
+using NetDetectionStateHandler = std::function<void(NetDetectionStatus netDetectionState,
+    const std::string &urlRedirect)>;
 } // namespace NetManagerStandard
 } // namespace OHOS
 #endif // NET_CONN_TYPES_H

@@ -29,56 +29,60 @@ void NapiDnsResolver::ExecDnsResolverCallback(napi_env env, void *data)
 {
     DnsResolverAsyncContext* context = static_cast<DnsResolverAsyncContext *>(data);
     if (context == nullptr) {
-        NETMGR_LOGE("context == nullptr");
+        NETMGR_LOG_E("context == nullptr");
         return;
     }
     std::string hostName = context->host;
     std::vector<INetAddr> addrInfo;
-    NETMGR_LOGI("ExecDnsResolverCallback [%{public}s]", hostName.c_str());
-    DelayedSingleton<DnsResolverClient>::GetInstance()->GetAddressesByName(hostName, addrInfo);
-    NETMGR_LOGI("ExecDnsResolverCallback, addrInfo.size = [%{public}d]", static_cast<int>(addrInfo.size()));
-    std::string tap;
+    NETMGR_LOG_D("ExecDnsResolverCallback [%{public}s]", hostName.c_str());
+    context->result = DelayedSingleton<DnsResolverClient>::GetInstance()->GetAddressesByName(hostName, addrInfo);
+    NETMGR_LOG_D("ExecDnsResolverCallback, addrInfo.size = [%{public}zd]", addrInfo.size());
     for (auto it = addrInfo.begin(); it != addrInfo.end(); ++it) {
-        context->hostAddress.push_back(it->ToString(tap));
+        context->hostAddress.push_back(it->address_);
     }
 }
 
 void NapiDnsResolver::CompleteDnsResolverCallback(napi_env env, napi_status status, void *data)
 {
-    NETMGR_LOGI("CompleteDnsResolverCallback");
+    NETMGR_LOG_D("CompleteDnsResolverCallback");
     DnsResolverAsyncContext* context = static_cast<DnsResolverAsyncContext *>(data);
     if (context == nullptr) {
-        NETMGR_LOGE("context == nullptr");
+        NETMGR_LOG_E("context == nullptr");
         return;
     }
     // creat function return
     napi_value infoAttay = nullptr;
+    napi_value infoFail = nullptr;
     napi_value info = nullptr;
-    napi_create_string_utf8(env, "fail", NAPI_AUTO_LENGTH, &info);
-    napi_create_array_with_length(env, context->hostAddress.size(), &infoAttay);
-    for (size_t index = 0; index < context->hostAddress.size(); index++) {
-        napi_create_string_utf8(env, context->hostAddress[index].c_str(), NAPI_AUTO_LENGTH, &info);
-        napi_set_element(env, infoAttay, index, info);
+    napi_create_int32(env, context->result, &infoFail);
+    if (context->hostAddress.size() > 0) {
+        napi_create_array_with_length(env, context->hostAddress.size(), &infoAttay);
+        for (size_t index = 0; index < context->hostAddress.size(); index++) {
+            napi_create_string_utf8(env, context->hostAddress[index].c_str(), NAPI_AUTO_LENGTH, &info);
+            napi_set_element(env, infoAttay, index, info);
+        }
+    } else {
+        napi_create_string_utf8(env, "", NAPI_AUTO_LENGTH, &infoAttay);
     }
     if (context->callbackRef == nullptr) {
         // promiss return
-        if (context->hostAddress.size() > 0) {
+        if (context->result == ERR_NONE) {
             NAPI_CALL_RETURN_VOID(env, napi_resolve_deferred(env, context->deferred, infoAttay));
         } else {
-            NAPI_CALL_RETURN_VOID(env, napi_reject_deferred(env, context->deferred, info));
+            NAPI_CALL_RETURN_VOID(env, napi_reject_deferred(env, context->deferred, infoFail));
         }
     } else {
         // call back return
-        napi_value callbackValues[static_cast<int32_t>(JS_CALLBACK_ARGV::CALLBACK_ARGV_CNT)] = {nullptr, nullptr};
+        napi_value callbackValues[CALLBACK_ARGV_CNT] = {nullptr, nullptr};
         napi_value recv = nullptr;
         napi_value result = nullptr;
         napi_value callbackFunc = nullptr;
         napi_get_undefined(env, &recv);
         napi_get_reference_value(env, context->callbackRef, &callbackFunc);
-        if (context->hostAddress.size() > 0) {
-            callbackValues[static_cast<int32_t>(JS_CALLBACK_ARGV::CALLBACK_ARGV_INDEX_1)] = infoAttay;
+        if (context->result == ERR_NONE) {
+            callbackValues[CALLBACK_ARGV_INDEX_1] = infoAttay;
         } else {
-            callbackValues[static_cast<int32_t>(JS_CALLBACK_ARGV::CALLBACK_ARGV_INDEX_0)] = info;
+            callbackValues[CALLBACK_ARGV_INDEX_0] = infoFail;
         }
         napi_call_function(env, recv, callbackFunc, std::size(callbackValues), callbackValues, &result);
         napi_delete_reference(env, context->callbackRef);
@@ -90,27 +94,26 @@ void NapiDnsResolver::CompleteDnsResolverCallback(napi_env env, napi_status stat
 
 napi_value NapiDnsResolver::GetAddressesByName(napi_env env, napi_callback_info info)
 {
-    NETMGR_LOGI("NapiDnsResolver GetAddressesByName");
-    size_t argc = static_cast<size_t>(JS_ARGV_NUM::ARGV_NUM_2);
-    napi_value argv[] = {nullptr, nullptr} ;
+    NETMGR_LOG_D("NapiDnsResolver GetAddressesByName");
+    size_t argc = ARGV_NUM_2;
+    napi_value argv[] = {nullptr, nullptr};
     NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
     DnsResolverAsyncContext* context = std::make_unique<DnsResolverAsyncContext>().release();
-    NAPI_CALL(env, napi_get_value_string_utf8(env, argv[static_cast<int32_t>(JS_ARGV_INDEX::ARGV_INDEX_0)],
-        context->host, HOST_MAX_BYTES, &(context->hostRealBytes)));
-    NETMGR_LOGI("GetAddressesByName = [%{public}s]", context->host);
-    NETMGR_LOGI("GetAddressesByName argc = [%{public}d]", static_cast<int>(argc));
+    NAPI_CALL(env, napi_get_value_string_utf8(env, argv[ARGV_INDEX_0], context->host, HOST_MAX_BYTES,
+        &(context->hostRealBytes)));
+    NETMGR_LOG_D("GetAddressesByName = [%{public}s]", context->host);
+    NETMGR_LOG_D("GetAddressesByName argc = [%{public}d]", static_cast<int32_t>(argc));
     napi_value result = nullptr;
-    if (argc == static_cast<int32_t>(JS_ARGV_NUM::ARGV_NUM_1)) {
+    if (argc == ARGV_NUM_1) {
         if (context->callbackRef == nullptr) {
             NAPI_CALL(env, napi_create_promise(env, &context->deferred, &result));
         } else {
             NAPI_CALL(env, napi_get_undefined(env, &result));
         }
-    } else if (argc == static_cast<int32_t>(JS_ARGV_NUM::ARGV_NUM_2)) {
-        NAPI_CALL(env, napi_create_reference(env, argv[static_cast<int32_t>(JS_ARGV_INDEX::ARGV_INDEX_1)],
-            CALLBACK_REF_CNT, &context->callbackRef));
+    } else if (argc == ARGV_NUM_2) {
+        NAPI_CALL(env, napi_create_reference(env, argv[ARGV_INDEX_1], CALLBACK_REF_CNT, &context->callbackRef));
     } else {
-        NETMGR_LOGE("GetAddressesByName  exception");
+        NETMGR_LOG_E("GetAddressesByName  exception");
     }
     // creat async work
     napi_value resource = nullptr;

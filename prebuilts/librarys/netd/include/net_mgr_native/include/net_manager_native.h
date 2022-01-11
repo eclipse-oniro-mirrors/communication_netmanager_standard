@@ -70,6 +70,7 @@ public:
 
     void initChildChains();
     void initUnixSocket();
+    void initDnsConfFile();
     void init();
 
     int networkCreatePhysical(int netId, int permission);

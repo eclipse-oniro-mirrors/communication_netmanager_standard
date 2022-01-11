@@ -19,8 +19,9 @@
 #include "singleton.h"
 #include "system_ability.h"
 
-#include "ipc/ethernet_service_stub.h"
+#include "ethernet_service_stub.h"
 #include "ethernet_management.h"
+#include "ethernet_service_common.h"
 
 namespace OHOS {
 namespace NetManagerStandard {
@@ -40,8 +41,9 @@ public:
 
     int32_t SetIfaceConfig(const std::string &iface, sptr<InterfaceConfiguration> &ic) override;
     sptr<InterfaceConfiguration> GetIfaceConfig(const std::string &iface) override;
-    int32_t IsActivate(const std::string &iface) override;
-    std::vector<std::string> GetActivateInterfaces() override;
+    int32_t IsIfaceActive(const std::string &iface) override;
+    std::vector<std::string> GetAllActiveIfaces() override;
+    int32_t ResetFactory() override;
 
 private:
     bool Init();
@@ -50,6 +52,7 @@ private:
     ServiceRunningState state_ = ServiceRunningState::STATE_STOPPED;
     bool registerToService_ = false;
     std::unique_ptr<EthernetManagement> ethManagement_;
+    sptr<EthernetServiceCommon> serviceComm_ = nullptr;
     NetLinkRtnl nlkRtnl_;
 };
 } // namespace NetManagerStandard

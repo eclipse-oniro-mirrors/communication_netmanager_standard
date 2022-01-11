@@ -45,7 +45,7 @@ template <typename T>
 bool BroadcastManager::SendBroadcastEx(const BroadcastInfo &info, const std::map<std::string, T> &param)
 {
     if (info.action.empty()) {
-        NETMGR_LOGE("The parameter of action is empty");
+        NETMGR_LOG_E("The parameter of action is empty");
         return false;
     }
 
@@ -64,9 +64,9 @@ bool BroadcastManager::SendBroadcastEx(const BroadcastInfo &info, const std::map
 
     bool publishResult = EventFwk::CommonEventManager::PublishCommonEvent(eventData, publishInfo, nullptr);
     if (publishResult) {
-        NETMGR_LOGI("Send broadcast is successfull");
+        NETMGR_LOG_D("Send broadcast is successfull");
     } else {
-        NETMGR_LOGE("Send broadcast is failed");
+        NETMGR_LOG_D("Send broadcast is failed");
     }
 
     return publishResult;

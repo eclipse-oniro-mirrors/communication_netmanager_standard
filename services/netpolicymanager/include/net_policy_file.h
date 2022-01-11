@@ -16,23 +16,26 @@
 #ifndef NET_POLICY_FILE_H
 #define NET_POLICY_FILE_H
 
-#include <iostream>
+#include <climits>
+#include <fcntl.h>
 #include <fstream>
-#include <sstream>
-#include <vector>
+#include <iostream>
 #include <memory>
 #include <mutex>
+#include <sstream>
+#include <sys/sendfile.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/sendfile.h>
-#include <fcntl.h>
 #include <unistd.h>
-#include <climits>
+#include <vector>
 
+#include <json/json.h>
 #include "refbase.h"
 
+#include "net_policy_cellular_policy.h"
 #include "net_policy_constants.h"
 #include "net_policy_define.h"
+#include "net_policy_quota_policy.h"
 
 namespace OHOS {
 namespace NetManagerStandard {
@@ -49,13 +52,31 @@ public:
     bool ReadFile(const std::string& fileName, std::string& content);
     bool Json2Obj(const std::string& content, NetPolicy& netPolicy);
     bool WriteFile(const std::string& fileName);
-    bool WriteFile(const NetUidPolicyOpType netUidPolicyOpType, uint32_t uid, NetUidPolicy policy);
-    NetUidPolicy GetUidPolicy(uint32_t uid);
-    bool GetUids(NetUidPolicy policy, std::vector<uint32_t> &uids);
+    bool WriteFile(NetUidPolicyOpType netUidPolicyOpType, uint32_t uid, NetUidPolicy policy);
+    bool WriteFile(const std::vector<NetPolicyQuotaPolicy> &quotaPolicies);
+    bool WriteFile(const std::vector<NetPolicyCellularPolicy> &cellularPolicies);
+    NetUidPolicy GetPolicyByUid(uint32_t uid);
+    bool GetUidsByPolicy(NetUidPolicy policy, std::vector<uint32_t> &uids);
+    NetPolicyResultCode GetNetPolicies(std::vector<NetPolicyQuotaPolicy> &quotaPolicies);
+    NetPolicyResultCode GetCellularPolicies(std::vector<NetPolicyCellularPolicy> &cellularPolicies);
+    NetPolicyResultCode ResetFactory(const std::string &subscriberId);
+    NetPolicyResultCode SetBackgroundPolicy(bool backgroundPolicy);
+    bool GetBackgroundPolicy();
+    bool IsInterfaceMetered(const std::string &ifaceName);
 
 private:
     bool FileExists(const std::string& fileName);
     bool CreateFile(const std::string& fileName);
+    void AppendUidPolicy(Json::Value &root);
+    void AppendBackgroundPolicy(Json::Value &root);
+    void AppendQuotaPolicy(Json::Value &root);
+    void AppendCellularPolicy(Json::Value &root);
+    void ParseUidPolicy(const Json::Value &root, NetPolicy& netPolicy);
+    void ParseBackgroundPolicy(const Json::Value &root, NetPolicy& netPolicy);
+    void ParseQuotaPolicy(const Json::Value &root, NetPolicy& netPolicy);
+    void ParseCellularPolicy(const Json::Value &root, NetPolicy& netPolicy);
+    bool UpdateQuotaPolicyExist(const std::string &subscriberId, const NetPolicyQuotaPolicy &quotaPolicy);
+    bool UpdateCellularPolicyExist(const std::string &subscriberId, const NetPolicyCellularPolicy &cellularPolicy);
 
 private:
     NetPolicy netPolicy_;

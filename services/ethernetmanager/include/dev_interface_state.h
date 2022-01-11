@@ -19,14 +19,15 @@
 #include <string>
 #include <vector>
 
-#include "i_net_conn_service.h"
-#include "dhcp_define.h"
+#include "refbase.h"
+#include "net_specifier.h"
+#include "net_link_info.h"
+#include "net_supplier_info.h"
 
 #include "interface_configuration.h"
 
 namespace OHOS {
 namespace NetManagerStandard {
-constexpr int32_t MINIMUM_SUPPLIER_ID = 1000;
 class DevInterfaceState : public virtual RefBase {
     typedef enum {
         REGISTERED,
@@ -46,7 +47,8 @@ public:
     void SetlinkInfo(sptr<NetLinkInfo> &linkInfo);
     void SetIfcfg(sptr<InterfaceConfiguration> &ifcfg);
     void SetDhcpReqState(bool dhcpReqState);
-    void UpdateLinkInfo(const std::string &iface, const OHOS::Wifi::DhcpResult &result);
+    void UpdateLinkInfo(const INetAddr &ipAddr, const INetAddr &gateWay, const INetAddr &route, const INetAddr &dns1,
+        const INetAddr &dns2);
     std::string GetDevName() const;
     std::vector<uint8_t> GetHWaddr() const;
     uint64_t GetNetCapabilities() const;
@@ -57,10 +59,10 @@ public:
     IPSetMode GetIPSetMode() const;
     bool GetDhcpReqState() const;
 
-    int32_t RemoteRegisterNetSupplier();
-    int32_t RemoteUnregisterNetSupplier();
-    int32_t RemoteUpdateNetLinkInfo();
-    int32_t RemoteUpdateNetSupplierInfo();
+    void RemoteRegisterNetSupplier();
+    void RemoteUnregisterNetSupplier();
+    void RemoteUpdateNetLinkInfo();
+    void RemoteUpdateNetSupplierInfo();
 
 private:
     void UpdateLinkInfo();
@@ -69,7 +71,7 @@ private:
 
 private:
     ConnLinkState connLinkState_ = UNREGISTERED;
-    int32_t netSupplier_ = 0;
+    uint32_t netSupplier_ = 0;
     std::string devName_;
     std::vector<uint8_t> devHWaddr_;
     bool linkUp_ = false;
